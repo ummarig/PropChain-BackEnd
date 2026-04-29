@@ -45,7 +45,6 @@ enum TransactionStatus {
   PENDING
   COMPLETED
   CANCELLED
-  FAILED
 }
 
 // Document types
@@ -127,6 +126,11 @@ enum BounceType {
   SOFT
 }
 
+enum DigestFrequency {
+  DAILY
+  WEEKLY
+}
+
 
 enum DisputeStatus {
   OPEN
@@ -201,6 +205,7 @@ model User {
   linkClicks              LinkClick[]
   emailEngagements        EmailEngagement[]
   emailBounces            EmailBounce[]
+  digestPreference        DigestPreference?
 
 
   @@index([email])
@@ -799,3 +804,20 @@ model EmailBounce {
   @@map("email_bounces")
 }
 
+
+model DigestPreference {
+  id               String          @id @default(uuid())
+  userId           String          @unique @map("user_id")
+  frequency        DigestFrequency @default(DAILY)
+  enabled          Boolean         @default(true)
+  unsubscribeToken String          @unique @map("unsubscribe_token")
+  lastSentAt       DateTime?       @map("last_sent_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([enabled, frequency])
+  @@map("digest_preferences")
+}
