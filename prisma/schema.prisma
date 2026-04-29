@@ -192,6 +192,7 @@ model User {
   linkClicks              LinkClick[]
   emailEngagements        EmailEngagement[]
   emailBounces            EmailBounce[]
+  transactionAuditLogs    TransactionAuditLog[]    @relation("TransactionAuditActor")
 
 
   @@index([email])
@@ -399,10 +400,11 @@ model Transaction {
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
   // Relations
-  property    Property     @relation(fields: [propertyId], references: [id])
-  buyer       User         @relation("BuyerTransactions", fields: [buyerId], references: [id])
-  seller      User         @relation("SellerTransactions", fields: [sellerId], references: [id])
+  property    Property               @relation(fields: [propertyId], references: [id])
+  buyer       User                   @relation("BuyerTransactions", fields: [buyerId], references: [id])
+  seller      User                   @relation("SellerTransactions", fields: [sellerId], references: [id])
   fraudAlerts FraudAlert[]
+  auditLogs   TransactionAuditLog[]
 
   @@index([propertyId])
   @@index([buyerId])
@@ -410,6 +412,27 @@ model Transaction {
   @@index([status])
   @@index([blockchainHash])
   @@map("transactions")
+}
+
+// Immutable audit log for every transaction change
+model TransactionAuditLog {
+  id            String   @id @default(uuid())
+  transactionId String   @map("transaction_id")
+  actorId       String?  @map("actor_id")       // user who made the change (null = system)
+  action        String                           // CREATED | UPDATED | STATUS_CHANGED | etc.
+  previousData  Json?    @map("previous_data")  // snapshot before change
+  newData       Json?    @map("new_data")        // snapshot after change
+  ipAddress     String?  @map("ip_address")
+  userAgent     String?  @map("user_agent")
+  createdAt     DateTime @default(now()) @map("created_at") // immutable timestamp
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  actor       User?       @relation("TransactionAuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([transactionId, createdAt])
+  @@index([actorId])
+  @@index([action])
+  @@map("transaction_audit_logs")
 }
 
 // Document model
