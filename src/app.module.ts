@@ -65,6 +65,7 @@ import { TransactionsModule } from './transactions/transactions.module';
     BlockchainModule,
     TransactionsModule,
   ],
+
   controllers: [AppController],
 })
 export class AppModule {}
