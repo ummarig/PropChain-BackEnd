@@ -1,109 +1,163 @@
-import { Type } from 'class-transformer';
 import {
-  IsEnum,
-  IsNumber,
-  IsObject,
-  IsOptional,
-  IsPositive,
   IsString,
+  IsNumber,
+  IsOptional,
+  IsEnum,
   IsUUID,
-  MaxLength,
+  IsDecimal,
   Min,
 } from 'class-validator';
-import { TransactionType } from '../../types/prisma.types';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+
+export enum TransactionTypeDto {
+  SALE = 'SALE',
+  PURCHASE = 'PURCHASE',
+  TRANSFER = 'TRANSFER',
+}
+
+export enum TransactionStatusDto {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+  FAILED = 'FAILED',
+}
 
 export class CreateTransactionDto {
-  @IsUUID('4')
-  propertyId!: string;
+  @ApiProperty({ description: 'Property ID' })
+  @IsString()
+  @IsUUID()
+  propertyId: string;
 
-  @IsUUID('4')
-  buyerId!: string;
+  @ApiProperty({ description: 'Buyer user ID' })
+  @IsString()
+  @IsUUID()
+  buyerId: string;
 
-  @IsUUID('4')
-  sellerId!: string;
+  @ApiProperty({ description: 'Seller user ID' })
+  @IsString()
+  @IsUUID()
+  sellerId: string;
 
+  @ApiProperty({ description: 'Transaction amount in currency' })
   @Type(() => Number)
   @IsNumber()
-  @IsPositive()
-  amount!: number;
+  @Min(0)
+  amount: number;
 
+  @ApiProperty({ enum: TransactionTypeDto })
+  @IsEnum(TransactionTypeDto)
+  type: TransactionTypeDto;
+
+  @ApiPropertyOptional({ description: 'Transaction notes' })
   @IsOptional()
-  @IsEnum(TransactionType)
-  type?: TransactionType;
+  @IsString()
+  notes?: string;
 }
 
-export class CreateTransactionTaxStrategyDto {
-  @IsString()
-  @MaxLength(100)
-  strategyType!: string;
+export class UpdateTransactionDto {
+  @ApiPropertyOptional({ enum: TransactionStatusDto })
+  @IsOptional()
+  @IsEnum(TransactionStatusDto)
+  status?: TransactionStatusDto;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @MaxLength(150)
-  jurisdiction?: string;
+  notes?: string;
+}
 
+export class RecordTransactionOnChainDto {
+  @ApiPropertyOptional({ description: 'Buyer wallet address' })
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 4 })
-  @Min(0)
-  estimatedTaxRate?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  estimatedTaxImpact?: number;
-
   @IsString()
-  @MaxLength(2000)
-  explanation!: string;
+  buyerAddress?: string;
 
+  @ApiPropertyOptional({ description: 'Seller wallet address' })
   @IsOptional()
-  @IsObject()
-  metadata?: Record<string, unknown>;
+  @IsString()
+  sellerAddress?: string;
 
+  @ApiPropertyOptional({ description: 'Additional metadata' })
+  @IsOptional()
+  metadata?: Record<string, any>;
+}
+
+export class TransactionResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  propertyId: string;
+
+  @ApiProperty()
+  buyerId: string;
+
+  @ApiProperty()
+  sellerId: string;
+
+  @ApiProperty()
+  amount: number;
+
+  @ApiProperty({ enum: TransactionTypeDto })
+  type: TransactionTypeDto;
+
+  @ApiProperty({ enum: TransactionStatusDto })
+  status: TransactionStatusDto;
+
+  @ApiPropertyOptional()
+  blockchainHash?: string;
+
+  @ApiPropertyOptional()
+  contractAddress?: string;
+
+  @ApiPropertyOptional()
+  notes?: string;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+}
+
+export class TransactionListQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  propertyId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  buyerId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  sellerId?: string;
+
+  @ApiPropertyOptional({ enum: TransactionStatusDto })
+  @IsOptional()
+  @IsEnum(TransactionStatusDto)
+  status?: TransactionStatusDto;
+
+  @ApiPropertyOptional({ enum: TransactionTypeDto })
+  @IsOptional()
+  @IsEnum(TransactionTypeDto)
+  type?: TransactionTypeDto;
+
+  @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(1)
-  version?: number;
-}
+  page: number = 1;
 
-export class UpdateTransactionTaxStrategyDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  strategyType?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(150)
-  jurisdiction?: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 4 })
-  @Min(0)
-  estimatedTaxRate?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  estimatedTaxImpact?: number;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(2000)
-  explanation?: string;
-
-  @IsOptional()
-  @IsObject()
-  metadata?: Record<string, unknown>;
-
+  @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(1)
-  version?: number;
+  limit: number = 20;
 }
