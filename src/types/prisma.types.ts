@@ -47,6 +47,16 @@ export interface ApiKey {
   updatedAt: Date;
 }
 
+export interface TransactionHistory {
+  id: string;
+  transactionId: string;
+  status: string;
+  actorId: string | null;
+  notes: string | null;
+  metadata: any | null;
+  createdAt: Date;
+}
+
 export enum TokenType {
   ACCESS = 'ACCESS',
   REFRESH = 'REFRESH',
@@ -78,7 +88,6 @@ export enum TransactionStatus {
   PENDING = 'PENDING',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
-  FAILED = 'FAILED',
 }
 
 export enum FraudSeverity {
@@ -104,6 +113,19 @@ export enum FraudPattern {
   RAPID_PROPERTY_LISTINGS = 'RAPID_PROPERTY_LISTINGS',
   DUPLICATE_PROPERTY_ADDRESS = 'DUPLICATE_PROPERTY_ADDRESS',
   HIGH_VALUE_NEW_ACCOUNT_LISTING = 'HIGH_VALUE_NEW_ACCOUNT_LISTING',
+}
+
+export enum DisputeStatus {
+  OPEN = 'OPEN',
+  UNDER_REVIEW = 'UNDER_REVIEW',
+  RESOLVED = 'RESOLVED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum MilestoneStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  DELAYED = 'DELAYED',
 }
 
 export namespace Prisma {

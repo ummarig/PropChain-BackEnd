@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
-import { TransactionDocumentsService } from './transaction-documents.service';
-import { TransactionDocumentsController } from './transaction-documents.controller';
+import { TransactionsService } from './transactions.service';
+import { TransactionsController } from './transactions.controller';
 import { PrismaModule } from '../database/prisma.module';
-import { AuthModule } from '../auth/auth.module';
+import { BlockchainModule } from '../blockchain/blockchain.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
-  controllers: [TransactionDocumentsController],
-  providers: [TransactionDocumentsService],
-  exports: [TransactionDocumentsService],
+  imports: [PrismaModule, BlockchainModule],
+  providers: [TransactionsService],
+  controllers: [TransactionsController],
+  exports: [TransactionsService],
 })
 export class TransactionsModule {}

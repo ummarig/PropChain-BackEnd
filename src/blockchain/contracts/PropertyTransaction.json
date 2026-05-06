@@ -1,0 +1,194 @@
+{
+  "contractName": "PropertyTransaction",
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "transactionId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "buyer",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "seller",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "propertyHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "TransactionRecorded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "transactionId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "status",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "TransactionVerified",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "transactionId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "buyer",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "seller",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "propertyHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "recordTransaction",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "transactionId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "verifyTransaction",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "transactionId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getTransaction",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "buyer",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "seller",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "propertyHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "verified",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getTransactionCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x608060405234801561001057600080fd5b50610834806100206000396000f3fe608060405234801561001057600080fd5b50600436106100575760003560e01c80632f245c0514610101578063347a31481461017e5780634f558e791461019c57600080fd5b36610101576000803560e01c9050610101565b600080fd5b34801561010d57600080fd5b5061012a60048036038101906101259190610680565b6101ba565b60405161013891908151815260200190565b60405180910390f35b348015610170576040379050600080fd5b5061017e61024d565b60405190815260200160405180910390f35b348015610187576040379050600080fd5b50610187610294565b60405190815260200160405180910390f35b600080fd5b6040518060c001604052806000801b81526020016000801b81526020016000815260200160008152602001600081526020016000151581525090565b6040518060c00160405280600080600080600080600060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020016000801b73ffffffffffffffffffffffffffffffffffffffff1681526020016000815260200160008152602001600081526020016000151581525090565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1663e2517d3f6040518163ffffffff1660e01b8152600401602060405180830381865afa1580156102f7573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061031b919061077e565b81565b60006020828403121561033557600080fd5b8135905092915050565b6000604082840312156103515761035a565b81905092915050565b60006060828403121561036d5761036c565b81905092915050565b60006080828403121561038957610388565b81905092915050565b600060a08284031215610398576103a7565b81905092915050565b600060c082840312156103b8576103c7565b81905092915050565b60006103dc6103d76103d284610406565b610465565b610406565b9050919050565b6000819050919050565b60006103ff6103fa6103f586610433565b610465565b610433565b9050919050565b600081519050919050565b600060e08284031215610426576104355661046e565b9050919050565b600081519050919050565b6000601f19601f8301169050919050565b6000610457610452845061046e565b610465565b9050808382526020820190509293505050505050565b6040519050910565b50565b600082601f8301126104895761049a565b81356104a481610480565b604052905090565b6000806040838503121561048f576000803e3d6000fd5b82356104a481610480565b946020939093013593505050565b6000602082840312156104c4576104d3565b816104de6104d9826104f9565b6104f9565b9250505092915050565b600060606104f06104eb847f0100000000000000000000000000000000000000000000000000000000000000604052610509565b60405160200161050192919061078f565b60405190815260200160405180910390f35b905092915050565b6000600082840312156105255761052a565b81356104a481610509565b905092915050565b505050910565b60005b8381101561055a57818101518382015260200161054a565b50505050565b5050565b505050565b505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b600082601f8301126105a657600080fd5b81516104a48161046e565b600080604083850312156105c457600080fd5b825167ffffffffffffffff8111156105db57600080fd5b6105e78582860161059c565b92505060208301519150509250929050565b600080fd5b600080fd5b600060808284031215610618576106275000fd5b81905092915050565b600060a08284031215610636576106455000fd5b81905092915050565b600060c08284031215610654576106635000fd5b81905092915050565b600080fd5b61066b81610480565b811461067657600080fd5b50565b60006020828403121561068f5761069e565b81516104de81610662565b600081519050919050565b60006020828403121561071157506000fd5b81516104de81610662565b81565b600081519050919050565b6000602082840312156107375761073c565b81516104de8161072b565b600081519050919050565b600060208284031215610763576107725000fd5b81516104de81610752565b60006020828403121561068f576104de81610752565b60006020828403121561071157506104de81610752565b600081905092915050565b60008261079a5761079a610809565b50069050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b60006107de826107bb565b9150507fff84694c5b4b12c1da1b61e38259130864aeb998c535bca907e11909a4a0def019050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601260045260246000fdfea2646970667358221220000000000000000000000000000000000000000000000000000000000000000064736f6c63430008120033"
+}

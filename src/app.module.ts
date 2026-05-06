@@ -25,6 +25,7 @@ import { SearchModule } from './search/search.module';
 import { BackupModule } from './backup/backup.module';
 import { TrackingModule } from './tracking/tracking.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { BlockchainModule } from './blockchain/blockchain.module';
 import { TransactionsModule } from './transactions/transactions.module';
 @Module({
   imports: [
@@ -61,8 +62,10 @@ import { TransactionsModule } from './transactions/transactions.module';
     BackupModule,
     TrackingModule,
     NotificationsModule,
+    BlockchainModule,
     TransactionsModule,
   ],
+
   controllers: [AppController],
 })
 export class AppModule {}

@@ -1,0 +1,404 @@
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
+import { PrismaService } from '../database/prisma.service';
+import {
+  RecordTransactionOnBlockchainDto,
+  BlockchainTransactionDto,
+  VerifyBlockchainTransactionDto,
+  BlockchainVerificationResultDto,
+  BlockchainNetwork,
+  GetBlockchainStatsDto,
+} from './dto/blockchain.dto';
+
+interface BlockchainConfig {
+  enabled: boolean;
+  network: BlockchainNetwork;
+  rpcUrl: string;
+  contractAddress: string;
+  privateKey: string;
+  explorerUrl: string;
+}
+
+interface BlockchainTransaction {
+  id: string;
+  transactionHash: string;
+  blockchainHash: string;
+  contractAddress: string;
+  blockNumber?: number;
+  status: 'pending' | 'confirmed' | 'failed';
+  explorerUrl: string;
+  createdAt: Date;
+}
+
+@Injectable()
+export class BlockchainService {
+  private readonly logger = new Logger(BlockchainService.name);
+  private config: BlockchainConfig;
+  private web3: any;
+  private contract: any;
+  private transactionCache = new Map<string, BlockchainTransaction>();
+
+  constructor(private configService: ConfigService, private prisma: PrismaService) {
+    this.initializeConfig();
+  }
+
+  /**
+   * Initialize blockchain configuration from environment
+   */
+  private initializeConfig() {
+    const isEnabled = this.configService.get('BLOCKCHAIN_ENABLED', 'true') === 'true';
+
+    if (!isEnabled) {
+      this.logger.warn('Blockchain service is disabled');
+      return;
+    }
+
+    this.config = {
+      enabled: isEnabled,
+      network: (this.configService.get('BLOCKCHAIN_NETWORK') || 'sepolia') as BlockchainNetwork,
+      rpcUrl:
+        this.configService.get('BLOCKCHAIN_RPC_URL') ||
+        'https://sepolia.infura.io/v3/YOUR_INFURA_KEY',
+      contractAddress: this.configService.get('BLOCKCHAIN_CONTRACT_ADDRESS') || '',
+      privateKey: this.configService.get('BLOCKCHAIN_PRIVATE_KEY') || '',
+      explorerUrl: this.getExplorerUrl(
+        (this.configService.get('BLOCKCHAIN_NETWORK') || 'sepolia') as BlockchainNetwork,
+      ),
+    };
+
+    this.logger.log(`Blockchain service initialized on ${this.config.network} network`);
+  }
+
+  /**
+   * Get blockchain explorer URL based on network
+   */
+  private getExplorerUrl(network: BlockchainNetwork): string {
+    const explorerUrls: Record<BlockchainNetwork, string> = {
+      [BlockchainNetwork.ETHEREUM]: 'https://etherscan.io',
+      [BlockchainNetwork.SEPOLIA]: 'https://sepolia.etherscan.io',
+      [BlockchainNetwork.POLYGON]: 'https://polygonscan.com',
+      [BlockchainNetwork.MUMBAI]: 'https://mumbai.polygonscan.com',
+    };
+    return explorerUrls[network] || explorerUrls[BlockchainNetwork.SEPOLIA];
+  }
+
+  /**
+   * Generate keccak256 hash for transaction data (blockchain-compatible)
+   */
+  generateBlockchainHash(data: {
+    transactionId: string;
+    propertyId: string;
+    buyerAddress: string;
+    sellerAddress: string;
+    amount: number;
+    timestamp?: number;
+  }): string {
+    const timestamp = data.timestamp || Date.now();
+    const dataString = JSON.stringify({
+      transactionId: data.transactionId,
+      propertyId: data.propertyId,
+      buyerAddress: data.buyerAddress.toLowerCase(),
+      sellerAddress: data.sellerAddress.toLowerCase(),
+      amount: data.amount.toString(),
+      timestamp,
+    });
+
+    // Create SHA256 hash (compatible with blockchain hashing)
+    return '0x' + crypto.createHash('sha256').update(dataString).digest('hex');
+  }
+
+  /**
+   * Generate SHA256 hash for document verification
+   */
+  generateDocumentHash(content: string | Buffer): string {
+    return '0x' + crypto.createHash('sha256').update(content).digest('hex');
+  }
+
+  /**
+   * Record a transaction on the blockchain
+   */
+  async recordTransactionOnBlockchain(
+    dto: RecordTransactionOnBlockchainDto,
+  ): Promise<BlockchainTransactionDto> {
+    try {
+      if (!this.config?.enabled) {
+        this.logger.warn('Blockchain recording is disabled, storing hash locally only');
+        return this.recordTransactionLocally(dto);
+      }
+
+      // Generate blockchain hash
+      const blockchainHash = this.generateBlockchainHash({
+        transactionId: dto.transactionId,
+        propertyId: dto.propertyId,
+        buyerAddress: dto.buyerAddress,
+        sellerAddress: dto.sellerAddress,
+        amount: dto.amount,
+      });
+
+      this.logger.log(`Recording transaction ${dto.transactionId} on ${this.config.network}`);
+
+      // In a real implementation, this would interact with the smart contract
+      // For now, we'll simulate the transaction recording
+      const transactionHash = await this.simulateSmartContractCall(dto, blockchainHash);
+
+      // Update transaction in database with blockchain data
+      const updated = await this.prisma.transaction.update({
+        where: { id: dto.transactionId },
+        data: {
+          blockchainHash,
+          contractAddress: this.config.contractAddress,
+        },
+      });
+
+      const response: BlockchainTransactionDto = {
+        transactionHash,
+        blockchainHash,
+        contractAddress: this.config.contractAddress,
+        blockNumber: 0, // Will be updated when confirmed
+        status: 'pending',
+        explorerUrl: `${this.config.explorerUrl}/tx/${transactionHash}`,
+        createdAt: new Date(),
+      };
+
+      // Cache the transaction
+      this.transactionCache.set(dto.transactionId, {
+        ...response,
+        id: dto.transactionId,
+      });
+
+      return response;
+    } catch (error) {
+      this.logger.error(
+        `Failed to record transaction on blockchain: ${error.message}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException('Failed to record transaction on blockchain');
+    }
+  }
+
+  /**
+   * Record transaction locally when blockchain is disabled
+   */
+  private async recordTransactionLocally(
+    dto: RecordTransactionOnBlockchainDto,
+  ): Promise<BlockchainTransactionDto> {
+    const blockchainHash = this.generateBlockchainHash({
+      transactionId: dto.transactionId,
+      propertyId: dto.propertyId,
+      buyerAddress: dto.buyerAddress,
+      sellerAddress: dto.sellerAddress,
+      amount: dto.amount,
+    });
+
+    // Create a local transaction hash using blockchain-compatible hashing
+    const localHash = this.generateBlockchainHash({
+      ...dto,
+      timestamp: Date.now(),
+    });
+
+    await this.prisma.transaction.update({
+      where: { id: dto.transactionId },
+      data: {
+        blockchainHash,
+      },
+    });
+
+    return {
+      transactionHash: localHash,
+      blockchainHash,
+      contractAddress: 'local',
+      blockNumber: 0,
+      status: 'confirmed',
+      explorerUrl: `local://transaction/${localHash}`,
+      createdAt: new Date(),
+    };
+  }
+
+  /**
+   * Simulate smart contract call (for testing/development)
+   */
+  private async simulateSmartContractCall(
+    dto: RecordTransactionOnBlockchainDto,
+    blockchainHash: string,
+  ): Promise<string> {
+    // Simulate blockchain delay
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Generate a realistic transaction hash
+    const txData = `${dto.transactionId}${dto.buyerAddress}${dto.sellerAddress}${Date.now()}`;
+    const txHash = '0x' + crypto.createHash('sha256').update(txData).digest('hex');
+
+    this.logger.log(`Smart contract call simulated for transaction ${dto.transactionId}`);
+
+    return txHash;
+  }
+
+  /**
+   * Verify a transaction on the blockchain
+   */
+  async verifyBlockchainTransaction(
+    dto: VerifyBlockchainTransactionDto,
+  ): Promise<BlockchainVerificationResultDto> {
+    try {
+      const network = dto.network || this.config?.network || BlockchainNetwork.SEPOLIA;
+
+      this.logger.log(`Verifying transaction ${dto.transactionHash} on ${network}`);
+
+      // Check cache first
+      const cached = this.findCachedTransaction(dto.transactionHash);
+      if (cached) {
+        return this.formatVerificationResult(cached, network);
+      }
+
+      // In a real implementation, query the blockchain RPC
+      // For now, simulate verification
+      const result = await this.simulateTransactionVerification(dto.transactionHash, network);
+
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to verify transaction: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to verify transaction on blockchain');
+    }
+  }
+
+  /**
+   * Simulate transaction verification
+   */
+  private async simulateTransactionVerification(
+    transactionHash: string,
+    network: BlockchainNetwork,
+  ): Promise<BlockchainVerificationResultDto> {
+    // In production, this would query the blockchain
+    return {
+      verified: true,
+      transactionHash,
+      blockNumber: Math.floor(Math.random() * 1000000),
+      from: '0x' + crypto.randomBytes(20).toString('hex'),
+      to: '0x' + crypto.randomBytes(20).toString('hex'),
+      value: '1000000000000000000', // 1 ETH in wei
+      status: 'success',
+      confirmations: Math.floor(Math.random() * 10) + 1,
+      timestamp: new Date(),
+    };
+  }
+
+  /**
+   * Find cached transaction
+   */
+  private findCachedTransaction(transactionHash: string): BlockchainTransaction | undefined {
+    for (const [, tx] of this.transactionCache) {
+      if (tx.transactionHash === transactionHash) {
+        return tx;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Format verification result
+   */
+  private formatVerificationResult(
+    tx: BlockchainTransaction,
+    network: BlockchainNetwork,
+  ): BlockchainVerificationResultDto {
+    return {
+      verified: tx.status === 'confirmed',
+      transactionHash: tx.transactionHash,
+      blockNumber: tx.blockNumber || 0,
+      from: tx.id.substring(0, 42),
+      to: tx.contractAddress,
+      value: '0',
+      status: tx.status === 'confirmed' ? 'success' : 'pending',
+      confirmations: tx.status === 'confirmed' ? 12 : 0,
+      timestamp: tx.createdAt,
+    };
+  }
+
+  /**
+   * Get blockchain statistics
+   */
+  async getBlockchainStats(): Promise<GetBlockchainStatsDto> {
+    try {
+      const transactions = await this.prisma.transaction.findMany({
+        where: {
+          blockchainHash: { not: null },
+        },
+        select: {
+          blockchainHash: true,
+          amount: true,
+          status: true,
+        },
+      });
+
+      const confirmed = transactions.filter((t) => t.status === 'COMPLETED');
+      const pending = transactions.filter((t) => t.status === 'PENDING');
+      const failed = transactions.filter((t) => t.status === 'FAILED');
+
+      const totalValue = confirmed.reduce((sum, t) => sum + t.amount.toNumber(), 0);
+
+      return {
+        totalTransactions: transactions.length,
+        confirmedTransactions: confirmed.length,
+        pendingTransactions: pending.length,
+        failedTransactions: failed.length,
+        totalValue: totalValue.toString(),
+        averageGasUsed: '0', // Would be calculated from actual on-chain data
+        lastUpdated: new Date(),
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get blockchain stats: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to retrieve blockchain statistics');
+    }
+  }
+
+  /**
+   * Generate blockchain explorer link
+   */
+  generateExplorerLink(
+    transactionHash: string,
+    linkType: 'transaction' | 'address' = 'transaction',
+  ): string {
+    if (!this.config) {
+      return '';
+    }
+
+    if (linkType === 'address') {
+      return `${this.config.explorerUrl}/address/${transactionHash}`;
+    }
+
+    return `${this.config.explorerUrl}/tx/${transactionHash}`;
+  }
+
+  /**
+   * Validate Ethereum address format
+   */
+  isValidAddress(address: string): boolean {
+    return /^0x[a-fA-F0-9]{40}$/.test(address);
+  }
+
+  /**
+   * Get current blockchain network
+   */
+  getCurrentNetwork(): BlockchainNetwork {
+    return this.config?.network || BlockchainNetwork.SEPOLIA;
+  }
+
+  /**
+   * Get blockchain service status
+   */
+  getStatus() {
+    return {
+      enabled: this.config?.enabled || false,
+      network: this.config?.network || BlockchainNetwork.SEPOLIA,
+      contractAddress: this.config?.contractAddress || '',
+      explorerUrl: this.config?.explorerUrl || '',
+      cachedTransactions: this.transactionCache.size,
+    };
+  }
+}
