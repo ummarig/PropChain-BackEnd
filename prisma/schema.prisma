@@ -47,6 +47,14 @@ enum TransactionStatus {
   CANCELLED
 }
 
+// Refund status for cancelled transactions
+enum RefundStatus {
+  NONE
+  PENDING
+  PROCESSED
+  FAILED
+}
+
 // Document types
 enum DocumentType {
   TITLE_DEED
@@ -182,6 +190,7 @@ model User {
   properties              Property[]
   buyerTransactions       Transaction[]            @relation("BuyerTransactions")
   sellerTransactions      Transaction[]            @relation("SellerTransactions")
+  cancelledTransactions   Transaction[]            @relation("CancelledTransactions")
   documents               Document[]
   apiKeys                 ApiKey[]
   passwordHistory         PasswordHistory[]
@@ -406,18 +415,24 @@ model Property {
 
 // Transaction model
 model Transaction {
-  id              String            @id @default(uuid())
-  propertyId      String            @map("property_id")
-  buyerId         String            @map("buyer_id")
-  sellerId        String            @map("seller_id")
-  amount          Decimal
-  type            TransactionType
-  status          TransactionStatus @default(PENDING)
-  blockchainHash  String?           @map("blockchain_hash")
-  contractAddress String?           @map("contract_address")
-  notes           String?
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
+  id                 String            @id @default(uuid())
+  propertyId         String            @map("property_id")
+  buyerId            String            @map("buyer_id")
+  sellerId           String            @map("seller_id")
+  amount             Decimal
+  type               TransactionType
+  status             TransactionStatus @default(PENDING)
+  blockchainHash     String?           @map("blockchain_hash")
+  contractAddress    String?           @map("contract_address")
+  notes              String?
+  // Cancellation (#361)
+  cancellationReason String?           @map("cancellation_reason")
+  cancelledById      String?           @map("cancelled_by_id")
+  cancelledAt        DateTime?         @map("cancelled_at")
+  refundAmount       Decimal?          @map("refund_amount")
+  refundStatus       RefundStatus      @default(NONE) @map("refund_status")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
 
   // Relations
   property              Property                 @relation(fields: [propertyId], references: [id])
