@@ -407,9 +407,10 @@ model Property {
   updatedAt    DateTime       @updatedAt @map("updated_at")
 
   // Relations
-  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner        User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   documents    Document[]
+  images       PropertyImage[]
   fraudAlerts  FraudAlert[]
 
   @@index([ownerId])
@@ -418,6 +419,30 @@ model Property {
   @@index([price])
   @@index([propertyType])
   @@map("properties")
+}
+
+// Property gallery image with optimized variants and ordering (#TASK2)
+model PropertyImage {
+  id           String   @id @default(uuid())
+  propertyId   String   @map("property_id")
+  url          String   // optimized full-size variant
+  thumbnailUrl String   @map("thumbnail_url")
+  mediumUrl    String   @map("medium_url")
+  filename     String
+  mimeType     String   @map("mime_type")
+  size         Int      // bytes (optimized full-size)
+  width        Int?
+  height       Int?
+  order        Int      @default(0)
+  isPrimary    Boolean  @default(false) @map("is_primary")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, order])
+  @@index([propertyId, isPrimary])
+  @@map("property_images")
 }
 
 // Transaction model
