@@ -35,7 +35,7 @@ const NUMERIC_FIELDS: ReadonlySet<ComparableField> = new Set<ComparableField>([
   'yearBuilt',
 ]);
 
-interface FieldRow {
+export interface FieldRow {
   field: ComparableField;
   values: unknown[];
   allEqual: boolean;

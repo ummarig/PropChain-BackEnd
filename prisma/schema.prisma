@@ -152,7 +152,6 @@ enum MilestoneStatus {
   DELAYED
 }
 
-
 // User model
 model User {
   id                       String    @id @default(uuid())
@@ -449,6 +448,102 @@ model PropertyImage {
   @@map("property_images")
 }
 
+model PropertyFavorite {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  propertyId String   @map("property_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@index([userId, createdAt])
+  @@index([propertyId])
+  @@map("property_favorites")
+}
+
+model PropertyView {
+  id         String   @id @default(uuid())
+  propertyId String   @map("property_id")
+  userId     String?  @map("user_id")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  referrer   String?
+  sessionId  String?  @map("session_id")
+  viewedAt   DateTime @default(now()) @map("viewed_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId, viewedAt])
+  @@index([userId])
+  @@index([ipAddress])
+  @@map("property_views")
+}
+
+model Neighborhood {
+  id           String   @id @default(uuid())
+  name         String
+  city         String
+  state        String
+  country      String   @default("USA")
+  walkScore    Int?     @map("walk_score")
+  transitScore Int?     @map("transit_score")
+  bikeScore    Int?     @map("bike_score")
+  crimeIndex   Float?   @map("crime_index")
+  crimeRate    Json?    @map("crime_rate")
+  schoolRating Float?   @map("school_rating")
+  description  String?
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  properties Property[]
+  schools    NeighborhoodSchool[]
+  amenities  NeighborhoodAmenity[]
+
+  @@unique([name, city, state])
+  @@index([city, state])
+  @@map("neighborhoods")
+}
+
+model NeighborhoodSchool {
+  id                  String   @id @default(uuid())
+  neighborhoodId      String   @map("neighborhood_id")
+  name                String
+  type                String
+  rating              Float
+  distanceMiles       Float?   @map("distance_miles")
+  studentTeacherRatio Float?   @map("student_teacher_ratio")
+  enrollmentCount     Int?     @map("enrollment_count")
+  url                 String?
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId])
+  @@index([type])
+  @@map("neighborhood_schools")
+}
+
+model NeighborhoodAmenity {
+  id             String   @id @default(uuid())
+  neighborhoodId String   @map("neighborhood_id")
+  category       String
+  name           String
+  distanceMiles  Float?   @map("distance_miles")
+  rating         Float?
+  address        String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId])
+  @@index([category])
+  @@map("neighborhood_amenities")
+}
+
 // Transaction model
 model Transaction {
   id                 String            @id @default(uuid())
@@ -542,10 +637,10 @@ model Document {
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
   // Relations
-  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  versions  DocumentVersion[]
-  dispute  Dispute?  @relation(fields: [disputeId], references: [id], onDelete: SetNull)
+  property Property?       @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dispute  Dispute?        @relation(fields: [disputeId], references: [id], onDelete: SetNull)
+  versions DocumentVersion[]
 
   @@index([propertyId])
   @@index([transactionId])
