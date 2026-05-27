@@ -173,3 +173,20 @@ export class TransactionListQueryDto {
   @Min(1)
   limit: number = 20;
 }
+
+export class CreateTransactionTaxStrategyDto {
+  @ApiProperty({ description: 'Tax strategy type' })
+  @IsString()
+  strategyType!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  estimatedTaxImpact?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  explanation?: string;
+}

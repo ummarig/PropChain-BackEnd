@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TransactionsService } from './transactions.service';
 import { PrismaService } from '../database/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { TransactionTypeDto } from './dto/transaction.dto';
 
 describe('TransactionsService', () => {
@@ -31,18 +32,18 @@ describe('TransactionsService', () => {
     getBlockchainStats: jest.fn(),
   };
 
+  const mockNotificationsService = {
+    sendNotification: jest.fn(),
+    handleTransactionUpdate: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TransactionsService,
-        {
-          provide: PrismaService,
-          useValue: mockPrismaService,
-        },
-        {
-          provide: BlockchainService,
-          useValue: mockBlockchainService,
-        },
+        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: BlockchainService, useValue: mockBlockchainService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 

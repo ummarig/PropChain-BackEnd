@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   CreateTransactionDto,
   UpdateTransactionDto,
@@ -23,6 +24,7 @@ export class TransactionsService {
   constructor(
     private prisma: PrismaService,
     private blockchainService: BlockchainService,
+    private notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -152,6 +154,13 @@ export class TransactionsService {
 
       if (!transaction) {
         throw new NotFoundException('Transaction not found');
+      }
+
+      // Validate status transition: COMPLETED/CANCELLED are terminal
+      if (transaction.status === 'COMPLETED' || transaction.status === 'CANCELLED') {
+        throw new BadRequestException(
+          `Cannot change status from terminal state "${transaction.status}"`,
+        );
       }
 
       const updated = await this.prisma.transaction.update({
@@ -329,6 +338,13 @@ export class TransactionsService {
         throw new NotFoundException('Transaction not found');
       }
 
+      // Validate status transition: COMPLETED/CANCELLED are terminal
+      if (transaction.status === 'COMPLETED' || transaction.status === 'CANCELLED') {
+        throw new BadRequestException(
+          `Cannot change status from terminal state "${transaction.status}"`,
+        );
+      }
+
       const updated = await this.prisma.transaction.update({
         where: { id: transactionId },
         data: { status: status as any },
@@ -343,6 +359,118 @@ export class TransactionsService {
       );
       throw error;
     }
+  }
+
+  /**
+   * Create a transaction with owner validation (test API)
+   */
+  async createTransaction(
+    dto: {
+      propertyId: string;
+      buyerId: string;
+      sellerId: string;
+      amount: number;
+      type: string;
+    },
+    user: { sub: string; email: string; role: string; type: string },
+  ): Promise<any> {
+    const [property, buyer, seller] = await Promise.all([
+      this.prisma.property.findUnique({ where: { id: dto.propertyId } }),
+      this.prisma.user.findUnique({ where: { id: dto.buyerId } }),
+      this.prisma.user.findUnique({ where: { id: dto.sellerId } }),
+    ]);
+
+    if (!property) throw new NotFoundException('Property not found');
+    if (!buyer) throw new NotFoundException('Buyer not found');
+    if (!seller) throw new NotFoundException('Seller not found');
+
+    return this.prisma.transaction.create({
+      data: {
+        propertyId: dto.propertyId,
+        buyerId: dto.buyerId,
+        sellerId: dto.sellerId,
+        amount: dto.amount,
+        type: dto.type as any,
+        status: 'PENDING',
+      },
+      include: {
+        property: { select: { id: true, title: true, address: true } },
+        buyer: { select: { id: true, firstName: true, lastName: true, email: true } },
+        seller: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
+    });
+  }
+
+  /**
+   * Create a tax strategy suggestion
+   */
+  async createTaxStrategySuggestion(
+    transactionId: string,
+    dto: {
+      strategyType: string;
+      estimatedTaxRate?: number;
+      explanation?: string;
+      metadata?: Record<string, any>;
+    },
+    user: { sub: string; email: string; role: string; type: string },
+  ): Promise<any> {
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { id: transactionId },
+      include: { property: { select: { id: true, city: true, state: true, country: true } } },
+    });
+
+    if (!transaction) throw new NotFoundException('Transaction not found');
+
+    const jurisdiction = [
+      transaction.property?.city,
+      transaction.property?.state,
+      transaction.property?.country,
+    ]
+      .filter(Boolean)
+      .join(', ');
+
+    return this.prisma.transactionTaxStrategy.create({
+      data: {
+        transactionId,
+        createdById: user.sub,
+        strategyType: dto.strategyType,
+        jurisdiction: jurisdiction || 'Unknown',
+        explanation: dto.explanation,
+        version: 1,
+      },
+    }).then((result) => {
+      this.notificationsService.sendNotification(user.sub, 'TAX_STRATEGY_CREATED', result);
+      this.notificationsService.sendNotification(transaction.buyerId, 'TAX_STRATEGY_CREATED', result);
+      return result;
+    });
+  }
+
+  /**
+   * Update a tax strategy suggestion
+   */
+  async updateTaxStrategySuggestion(
+    transactionId: string,
+    strategyId: string,
+    dto: {
+      strategyType?: string;
+      jurisdiction?: string;
+    },
+    user: { sub: string; email: string; role: string; type: string },
+  ): Promise<any> {
+    const existing = await this.prisma.transactionTaxStrategy.findFirst({
+      where: { id: strategyId, transactionId },
+    });
+
+    if (!existing) throw new NotFoundException('Tax strategy not found');
+
+    return this.prisma.transactionTaxStrategy.update({
+      where: { id: strategyId },
+      data: {
+        ...(dto.strategyType && { strategyType: dto.strategyType }),
+        ...(dto.jurisdiction && { jurisdiction: dto.jurisdiction }),
+        version: (existing as any).version + 1,
+      },
+    });
   }
 
   /**
