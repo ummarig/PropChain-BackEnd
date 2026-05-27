@@ -68,7 +68,6 @@ describe('PropertiesService', () => {
     it('should call deleteMany and return deleted count and ids', async () => {
       mockPrismaService.property.deleteMany.mockResolvedValue({
         count: 2,
-        ids: ['id-1', 'id-2'],
       });
 
       const result = await service.bulkDeleteProperties(['id-1', 'id-2']);
