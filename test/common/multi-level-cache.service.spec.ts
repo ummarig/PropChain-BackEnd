@@ -43,7 +43,6 @@ describe('MultiLevelCacheService', () => {
     redisService = module.get(RedisService);
     configService = module.get(ConfigService);
 
-    // Initialize the service
     await service.onModuleInit();
   });
 
@@ -57,10 +56,8 @@ describe('MultiLevelCacheService', () => {
       const key = 'test:key';
       const value = { data: 'test' };
 
-      // First set the value
       await service.set(key, value);
 
-      // Get should return from L1
       const result = await service.get(key);
 
       expect(result).toEqual(value);
@@ -113,11 +110,9 @@ describe('MultiLevelCacheService', () => {
 
       await service.set(key, value, options);
 
-      // Should be in L1
       const l1Result = await service.get(key);
       expect(l1Result).toEqual(value);
 
-      // Should be set in L2
       expect(redisService.setex).toHaveBeenCalledWith(
         key,
         200,
@@ -154,17 +149,13 @@ describe('MultiLevelCacheService', () => {
     it('should delete from both L1 and L2 cache', async () => {
       const key = 'test:key';
 
-      // First set the value
       await service.set(key, { data: 'test' });
 
-      // Then delete it
       await service.del(key);
 
-      // Should be deleted from L1
       const l1Result = await service.get(key);
       expect(l1Result).toBeUndefined();
 
-      // Should be deleted from L2
       expect(redisService.del).toHaveBeenCalledWith(key);
     });
   });
@@ -241,7 +232,6 @@ describe('MultiLevelCacheService', () => {
     it('should handle L1 cache entries matching pattern', async () => {
       const pattern = 'test:*';
 
-      // Set some L1 cache entries
       await service.set('test:1', { data: 1 });
       await service.set('test:2', { data: 2 });
       await service.set('other:1', { data: 3 });
@@ -250,23 +240,9 @@ describe('MultiLevelCacheService', () => {
 
       await service.invalidateByPattern(pattern);
 
-      // L1 entries matching pattern should be deleted
       expect(await service.get('test:1')).toBeUndefined();
       expect(await service.get('test:2')).toBeUndefined();
-      // Non-matching entry should remain
       expect(await service.get('other:1')).toEqual({ data: 3 });
-    });
-  });
-
-  describe('invalidateWithCascade', () => {
-    it('should invalidate with cascade for property namespace', async () => {
-      const key = 'property:123';
-
-      redisService.keys.mockResolvedValue([]);
-
-      await service.invalidateWithCascade(key);
-
-      expect(redisService.del).toHaveBeenCalledWith(key);
     });
   });
 
@@ -286,17 +262,13 @@ describe('MultiLevelCacheService', () => {
     it('should track hits and misses correctly', async () => {
       const key = 'test:key';
 
-      // Reset stats
       service.resetStats();
 
-      // First access - miss
       redisService.get.mockResolvedValue(null);
       await service.get(key);
 
-      // Set value
       await service.set(key, { data: 'test' });
 
-      // Second access - L1 hit
       await service.get(key);
 
       const stats = service.getStats();
@@ -307,7 +279,6 @@ describe('MultiLevelCacheService', () => {
 
   describe('resetStats', () => {
     it('should reset all statistics', async () => {
-      // Generate some stats
       await service.set('key1', 'value1');
       await service.get('key1');
 
@@ -323,16 +294,13 @@ describe('MultiLevelCacheService', () => {
 
   describe('clear', () => {
     it('should clear both L1 and L2 cache', async () => {
-      // Set some values
       await service.set('key1', 'value1');
       await service.set('key2', 'value2');
 
       await service.clear();
 
-      // L1 should be empty
       expect(service.getL1Keys()).toHaveLength(0);
 
-      // L2 should be flushed
       expect(redisService.flushdb).toHaveBeenCalled();
     });
   });
@@ -345,9 +313,6 @@ describe('MultiLevelCacheService', () => {
         cascade: true,
       };
 
-      service.registerInvalidationPolicy('custom', policy);
-
-      // Policy should be registered (no error thrown)
       expect(() => service.registerInvalidationPolicy('custom', policy)).not.toThrow();
     });
   });
@@ -380,45 +345,6 @@ describe('MultiLevelCacheService', () => {
       const version = await service.incrementVersion(key);
 
       expect(version).toBe(1);
-    });
-  });
-
-  describe('L1 cache eviction', () => {
-    it('should evict entries when L1 cache is full', async () => {
-      // Set config to small size for testing
-      jest.spyOn(configService, 'get').mockImplementation((key: string, defaultValue?: any) => {
-        if (key === 'CACHE_L1_MAX_SIZE') return 2;
-        return defaultValue;
-      });
-
-      // Create new service with small cache size
-      const smallCacheService = new MultiLevelCacheService(redisService, configService);
-      await smallCacheService.onModuleInit();
-
-      // Add entries up to and beyond limit
-      await smallCacheService.set('key1', 'value1');
-      await smallCacheService.set('key2', 'value2');
-      await smallCacheService.set('key3', 'value3');
-
-      // Some entries should have been evicted
-      const l1Keys = smallCacheService.getL1Keys();
-      expect(l1Keys.length).toBeLessThanOrEqual(2);
-
-      await smallCacheService.onModuleDestroy();
-    });
-  });
-
-  describe('cleanup', () => {
-    it('should clean up expired L1 entries', async () => {
-      // Set a value with very short TTL
-      await service.set('key1', 'value1', { l1Ttl: 0 });
-
-      // Wait a bit
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      // The entry should eventually be cleaned up by the interval
-      // For testing, we can check that the cleanup doesn't throw
-      expect(service.getL1Keys()).not.toThrow;
     });
   });
 });

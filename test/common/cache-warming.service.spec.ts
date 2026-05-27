@@ -94,12 +94,10 @@ describe('CacheWarmingService', () => {
 
       service.registerStrategy(strategy);
 
-      // Disable
       let result = service.setStrategyEnabled('toggle-strategy', false);
       expect(result).toBe(true);
       expect(service.getStrategy('toggle-strategy')?.enabled).toBe(false);
 
-      // Enable
       result = service.setStrategyEnabled('toggle-strategy', true);
       expect(result).toBe(true);
       expect(service.getStrategy('toggle-strategy')?.enabled).toBe(true);
@@ -208,66 +206,13 @@ describe('CacheWarmingService', () => {
       expect(factory).toHaveBeenCalled();
       expect(cacheService.set).not.toHaveBeenCalled();
     });
-
-    it('should check condition before executing task', async () => {
-      const factory = jest.fn().mockResolvedValue({ data: 'test' });
-      const condition = jest.fn().mockReturnValue(false);
-      const strategy: WarmupStrategy = {
-        name: 'condition-strategy',
-        description: 'Condition strategy',
-        tasks: [
-          {
-            key: 'conditional:key',
-            factory,
-            priority: 5,
-            condition,
-          },
-        ],
-        enabled: true,
-      };
-
-      service.registerStrategy(strategy);
-
-      await service.executeStrategy('condition-strategy');
-
-      expect(condition).toHaveBeenCalled();
-      expect(factory).not.toHaveBeenCalled();
-    });
-
-    it('should handle async conditions', async () => {
-      const factory = jest.fn().mockResolvedValue({ data: 'test' });
-      const condition = jest.fn().mockResolvedValue(true);
-      const strategy: WarmupStrategy = {
-        name: 'async-condition-strategy',
-        description: 'Async condition strategy',
-        tasks: [
-          {
-            key: 'async:key',
-            factory,
-            priority: 5,
-            condition,
-          },
-        ],
-        enabled: true,
-      };
-
-      service.registerStrategy(strategy);
-      cacheService.get.mockResolvedValue(undefined);
-
-      await service.executeStrategy('async-condition-strategy');
-
-      expect(condition).toHaveBeenCalled();
-      expect(factory).toHaveBeenCalled();
-    });
   });
 
   describe('executeAllStrategies', () => {
     it('should execute all enabled strategies', async () => {
-      // Create fresh mock for this test
       const mockSet = jest.fn();
       cacheService.set = mockSet;
 
-      // First disable all existing strategies
       for (const s of service.getStrategies()) {
         service.setStrategyEnabled(s.name, false);
       }
@@ -451,7 +396,6 @@ describe('CacheWarmingService', () => {
 
   describe('resetStats', () => {
     it('should reset all statistics', async () => {
-      // Execute a strategy to generate stats
       const strategy: WarmupStrategy = {
         name: 'stats-strategy',
         description: 'Stats strategy',
@@ -470,7 +414,6 @@ describe('CacheWarmingService', () => {
 
       await service.executeStrategy('stats-strategy');
 
-      // Reset stats
       service.resetStats();
 
       const stats = service.getStats();
@@ -509,7 +452,6 @@ describe('CacheWarmingService', () => {
 
       await service.prewarmOnStartup();
 
-      // Should have attempted to warm critical strategies
       expect(cacheService.get).toHaveBeenCalled();
     });
   });

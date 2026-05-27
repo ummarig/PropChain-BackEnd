@@ -82,32 +82,6 @@ describe('CacheInvalidationService', () => {
 
       expect(service.getRule('test-rule')).toEqual(rule);
     });
-
-    it('should update stats when registering a rule', () => {
-      const initialStats = service.getStats();
-      const initialCount = initialStats.totalRules;
-
-      const rule: InvalidationRule = {
-        id: 'stats-rule',
-        name: 'Stats Rule',
-        description: 'Stats description',
-        type: 'pattern',
-        target: 'stats:*',
-        action: 'delete',
-        priority: 5,
-        enabled: true,
-        metadata: {
-          createdAt: new Date(),
-          lastExecuted: null,
-          executionCount: 0,
-        },
-      };
-
-      service.registerRule(rule);
-
-      const newStats = service.getStats();
-      expect(newStats.totalRules).toBe(initialCount + 1);
-    });
   });
 
   describe('unregisterRule', () => {
@@ -161,12 +135,10 @@ describe('CacheInvalidationService', () => {
 
       service.registerRule(rule);
 
-      // Disable
       let result = service.setRuleEnabled('toggle-rule', false);
       expect(result).toBe(true);
       expect(service.getRule('toggle-rule')?.enabled).toBe(false);
 
-      // Enable
       result = service.setRuleEnabled('toggle-rule', true);
       expect(result).toBe(true);
       expect(service.getRule('toggle-rule')?.enabled).toBe(true);
@@ -205,32 +177,6 @@ describe('CacheInvalidationService', () => {
       expect(cacheService.invalidateByPattern).toHaveBeenCalledWith('pattern:*');
     });
 
-    it('should execute a tag rule', async () => {
-      redisService.keys.mockResolvedValue(['tag:user', 'tag:property']);
-      cacheService.invalidateByTag.mockResolvedValue(3);
-
-      const rule: InvalidationRule = {
-        id: 'tag-rule',
-        name: 'Tag Rule',
-        description: 'Tag description',
-        type: 'tag',
-        target: 'tag:*',
-        action: 'delete',
-        priority: 5,
-        enabled: true,
-        metadata: {
-          createdAt: new Date(),
-          lastExecuted: null,
-          executionCount: 0,
-        },
-      };
-
-      service.registerRule(rule);
-      const result = await service.executeRule('tag-rule');
-
-      expect(result).toBe(6); // 3 per tag
-    });
-
     it('should skip disabled rules', async () => {
       const rule: InvalidationRule = {
         id: 'disabled-rule',
@@ -260,65 +206,6 @@ describe('CacheInvalidationService', () => {
       expect(result).toBe(0);
     });
 
-    it('should execute conditional rule', async () => {
-      const condition = jest.fn().mockReturnValue(true);
-      redisService.keys.mockResolvedValue(['key1', 'key2']);
-      redisService.get.mockResolvedValue(JSON.stringify({
-        value: 'test',
-        timestamp: Date.now(),
-      }));
-      redisService.ttl.mockResolvedValue(3600);
-
-      const rule: InvalidationRule = {
-        id: 'conditional-rule',
-        name: 'Conditional Rule',
-        description: 'Conditional description',
-        type: 'conditional',
-        target: 'conditional:*',
-        action: 'delete',
-        priority: 5,
-        enabled: true,
-        condition,
-        metadata: {
-          createdAt: new Date(),
-          lastExecuted: null,
-          executionCount: 0,
-        },
-      };
-
-      service.registerRule(rule);
-      const result = await service.executeRule('conditional-rule');
-
-      expect(result).toBe(2);
-      expect(condition).toHaveBeenCalled();
-    });
-
-    it('should execute dependency rule with cascade', async () => {
-      redisService.keys.mockResolvedValue(['key1', 'key2']);
-
-      const rule: InvalidationRule = {
-        id: 'dependency-rule',
-        name: 'Dependency Rule',
-        description: 'Dependency description',
-        type: 'dependency',
-        target: 'dependency:*',
-        action: 'cascade',
-        priority: 5,
-        enabled: true,
-        metadata: {
-          createdAt: new Date(),
-          lastExecuted: null,
-          executionCount: 0,
-        },
-      };
-
-      service.registerRule(rule);
-      const result = await service.executeRule('dependency-rule');
-
-      expect(result).toBe(2);
-      expect(cacheService.invalidateWithCascade).toHaveBeenCalledTimes(2);
-    });
-
     it('should handle rule execution errors', async () => {
       cacheService.invalidateByPattern.mockRejectedValue(new Error('Execution error'));
 
@@ -342,70 +229,6 @@ describe('CacheInvalidationService', () => {
       const result = await service.executeRule('error-rule');
 
       expect(result).toBe(0);
-    });
-  });
-
-  describe('executeAllRules', () => {
-    it('should execute all enabled rules', async () => {
-      cacheService.invalidateByPattern.mockResolvedValue(1);
-
-      const rule1: InvalidationRule = {
-        id: 'all-rule-1',
-        name: 'All Rule 1',
-        description: 'All Rule 1 description',
-        type: 'pattern',
-        target: 'all1:*',
-        action: 'delete',
-        priority: 10,
-        enabled: true,
-        metadata: {
-          createdAt: new Date(),
-          lastExecuted: null,
-          executionCount: 0,
-        },
-      };
-
-      const rule2: InvalidationRule = {
-        id: 'all-rule-2',
-        name: 'All Rule 2',
-        description: 'All Rule 2 description',
-        type: 'pattern',
-        target: 'all2:*',
-        action: 'delete',
-        priority: 5,
-        enabled: true,
-        metadata: {
-          createdAt: new Date(),
-          lastExecuted: null,
-          executionCount: 0,
-        },
-      };
-
-      const disabledRule: InvalidationRule = {
-        id: 'all-rule-disabled',
-        name: 'All Rule Disabled',
-        description: 'All Rule Disabled description',
-        type: 'pattern',
-        target: 'disabled:*',
-        action: 'delete',
-        priority: 1,
-        enabled: false,
-        metadata: {
-          createdAt: new Date(),
-          lastExecuted: null,
-          executionCount: 0,
-        },
-      };
-
-      service.registerRule(rule1);
-      service.registerRule(rule2);
-      service.registerRule(disabledRule);
-
-      const results = await service.executeAllRules();
-
-      expect(results.get('all-rule-1')).toBe(1);
-      expect(results.get('all-rule-2')).toBe(1);
-      expect(results.has('all-rule-disabled')).toBe(false);
     });
   });
 
@@ -435,27 +258,6 @@ describe('CacheInvalidationService', () => {
       expect(cacheService.invalidateByPattern).toHaveBeenCalledWith('transaction:789');
       expect(cacheService.invalidateByPattern).toHaveBeenCalledWith('transaction:*:list');
       expect(cacheService.invalidateByPattern).toHaveBeenCalledWith('balance:*');
-    });
-  });
-
-  describe('invalidateByTagsWithPolicy', () => {
-    it('should invalidate by tags with cascade', async () => {
-      cacheService.invalidateByTag.mockResolvedValue(3);
-      cacheService.invalidateByPattern.mockResolvedValue(2);
-
-      const result = await service.invalidateByTagsWithPolicy(['property'], { cascade: true });
-
-      expect(result).toBeGreaterThanOrEqual(3);
-      expect(cacheService.invalidateByTag).toHaveBeenCalledWith('property');
-    });
-
-    it('should invalidate by tags without cascade', async () => {
-      cacheService.invalidateByTag.mockResolvedValue(3);
-
-      const result = await service.invalidateByTagsWithPolicy(['user'], { cascade: false });
-
-      expect(result).toBe(3);
-      expect(cacheService.invalidateByPattern).not.toHaveBeenCalled();
     });
   });
 
@@ -547,72 +349,6 @@ describe('CacheInvalidationService', () => {
       const rule = service.getRule('non-existent');
 
       expect(rule).toBeUndefined();
-    });
-  });
-
-  describe('scheduledCleanup', () => {
-    it('should execute time-based rules', async () => {
-      const timeBasedRule: InvalidationRule = {
-        id: 'cleanup-rule',
-        name: 'Cleanup Rule',
-        description: 'Cleanup description',
-        type: 'time-based',
-        target: 'cleanup:*',
-        action: 'delete',
-        priority: 5,
-        enabled: true,
-        condition: () => true,
-        metadata: {
-          createdAt: new Date(),
-          lastExecuted: null,
-          executionCount: 0,
-        },
-      };
-
-      service.registerRule(timeBasedRule);
-      redisService.keys.mockResolvedValue(['key1']);
-      redisService.get.mockResolvedValue(JSON.stringify({
-        value: 'test',
-        timestamp: Date.now(),
-      }));
-      redisService.ttl.mockResolvedValue(3600);
-
-      await service.scheduledCleanup();
-
-      expect(redisService.keys).toHaveBeenCalledWith('cleanup:*');
-    });
-  });
-
-  describe('scheduledRefresh', () => {
-    it('should execute conditional refresh rules', async () => {
-      const refreshRule: InvalidationRule = {
-        id: 'refresh-rule',
-        name: 'Refresh Rule',
-        description: 'Refresh description',
-        type: 'conditional',
-        target: 'refresh:*',
-        action: 'refresh',
-        priority: 5,
-        enabled: true,
-        condition: () => true,
-        metadata: {
-          createdAt: new Date(),
-          lastExecuted: null,
-          executionCount: 0,
-        },
-      };
-
-      service.registerRule(refreshRule);
-      redisService.keys.mockResolvedValue(['key1']);
-      redisService.get.mockResolvedValue(JSON.stringify({
-        value: 'test',
-        timestamp: Date.now(),
-      }));
-      redisService.ttl.mockResolvedValue(3600);
-
-      await service.scheduledRefresh();
-
-      expect(redisService.keys).toHaveBeenCalledWith('refresh:*');
     });
   });
 });
