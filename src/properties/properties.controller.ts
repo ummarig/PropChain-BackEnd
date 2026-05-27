@@ -1,13 +1,25 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Patch,
+  Delete,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { PropertiesService } from './properties.service';
 import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
 import { SearchPropertiesDto } from './dto/search-properties.dto';
+import { TransitionPropertyStatusDto } from './dto/transition-status.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUserPayload } from '../auth/types/auth-user.type';
-import { UserRole } from '../types/prisma.types';
+import { PropertyStatus, UserRole } from '../types/prisma.types';
 
 @Controller('properties')
 export class PropertiesController {
@@ -55,5 +67,28 @@ export class PropertiesController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.propertiesService.remove(id);
+  }
+
+  /**
+   * Transition a property's lifecycle status.
+   * Workflow: DRAFT → PENDING → ACTIVE → UNDER_CONTRACT → SOLD
+   * (plus a few additional reasonable transitions — see
+   * `property-status.constants.ts`).
+   *
+   * Allowed for the property's owner, AGENT, or ADMIN.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/status')
+  transitionStatus(
+    @Param('id') id: string,
+    @Body() dto: TransitionPropertyStatusDto,
+    @CurrentUser() user: AuthUserPayload,
+  ) {
+    return this.propertiesService.transitionStatus(
+      id,
+      dto.status as PropertyStatus,
+      user.sub,
+      user.role,
+    );
   }
 }

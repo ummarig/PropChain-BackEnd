@@ -1,9 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaService } from '../database/prisma.service';
 import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
 import { SearchPropertiesDto } from './dto/search-properties.dto';
 import { FraudService } from '../fraud/fraud.service';
+import { PropertyStatus, UserRole } from '../types/prisma.types';
+import {
+  canTransitionPropertyStatus,
+  getAllowedNextPropertyStatuses,
+} from './property-status.constants';
 
 interface FindAllParams {
   skip?: number;
@@ -109,6 +119,67 @@ export class PropertiesService {
       where: { ownerId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /**
+   * Transition a property's status according to the workflow state machine.
+   *
+   * Allowed happy path: DRAFT → PENDING → ACTIVE → UNDER_CONTRACT → SOLD.
+   * See `property-status.constants.ts` for the full transition map.
+   *
+   * Authorization: only the owner, an AGENT, or an ADMIN may transition.
+   *
+   * Throws:
+   * - NotFoundException if the property doesn't exist
+   * - ForbiddenException if the caller isn't allowed to mutate this property
+   * - BadRequestException if the transition isn't allowed by the workflow
+   */
+  async transitionStatus(
+    propertyId: string,
+    nextStatus: PropertyStatus,
+    actorId: string,
+    actorRole: UserRole | string,
+  ) {
+    const property = await this.prisma.property.findUnique({
+      where: { id: propertyId },
+      select: { id: true, ownerId: true, status: true },
+    });
+
+    if (!property) {
+      throw new NotFoundException(`Property ${propertyId} not found`);
+    }
+
+    const isOwner = property.ownerId === actorId;
+    const isPrivileged =
+      actorRole === UserRole.ADMIN || actorRole === UserRole.AGENT;
+    if (!isOwner && !isPrivileged) {
+      throw new ForbiddenException(
+        'You are not allowed to change the status of this property',
+      );
+    }
+
+    const currentStatus = property.status as PropertyStatus;
+
+    // Idempotent no-op: don't update, but echo the property back so callers
+    // can rely on a consistent shape.
+    if (currentStatus === nextStatus) {
+      return this.findOne(propertyId);
+    }
+
+    if (!canTransitionPropertyStatus(currentStatus, nextStatus)) {
+      const allowed = getAllowedNextPropertyStatuses(currentStatus).join(', ');
+      throw new BadRequestException(
+        `Cannot transition property from ${currentStatus} to ${nextStatus}. ` +
+          `Allowed next statuses: ${allowed || '(none)'}`,
+      );
+    }
+
+    await this.prisma.property.update({
+      where: { id: propertyId },
+      data: { status: nextStatus },
+    });
+
+    return this.findOne(propertyId);
   }
 
   /**
