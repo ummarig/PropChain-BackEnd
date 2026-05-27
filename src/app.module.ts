@@ -29,6 +29,7 @@ import { BlockchainModule } from './blockchain/blockchain.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { PropertyViewsModule } from './property-views/property-views.module';
+import { PropertyComparisonModule } from './property-comparison/property-comparison.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -68,6 +69,7 @@ import { PropertyViewsModule } from './property-views/property-views.module';
     TransactionsModule,
     FavoritesModule,
     PropertyViewsModule,
+    PropertyComparisonModule,
   ],
 
   controllers: [AppController],
