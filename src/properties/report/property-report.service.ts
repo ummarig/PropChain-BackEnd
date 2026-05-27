@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../database/prisma.service';
+import { PrismaService } from '../../database/prisma.service';
+import { Decimal } from '@prisma/client/runtime/library';
 import { PropertiesService } from '../properties.service';
 import * as PDFDocument from 'pdfkit';
 import { Buffer } from 'buffer';
@@ -148,10 +149,10 @@ export class PropertyReportService {
       const secondHalf = prices.slice(Math.ceil(prices.length / 2));
 
       const avgFirstHalf = firstHalf
-        .reduce((sum, p) => sum.plus(p), new Decimal(0))
+        .reduce((sum: Decimal, p: Decimal) => sum.plus(p), new Decimal(0))
         .divide(firstHalf.length);
       const avgSecondHalf = secondHalf
-        .reduce((sum, p) => sum.plus(p), new Decimal(0))
+        .reduce((sum: Decimal, p: Decimal) => sum.plus(p), new Decimal(0))
         .divide(secondHalf.length);
 
       const diffPercent = avgSecondHalf.minus(avgFirstHalf).divide(avgFirstHalf).times(100);

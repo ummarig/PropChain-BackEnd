@@ -61,7 +61,7 @@ export class PropertiesController {
 
   @UseGuards(JwtAuthGuard)
   @Get(':id/report')
-  async generateReport(@Param('id') id: string, @Res() res: Response) {
+  async generateReport(@Param('id') id: string, @Res() res: Response): Promise<void> {
     try {
       const pdfBuffer = await this.propertyReportService.generatePropertyReport(id);
 
@@ -76,10 +76,11 @@ export class PropertiesController {
       res.send(pdfBuffer);
     } catch (error) {
       // Handle errors appropriately
-      if (error.message.includes('not found')) {
-        return res.status(HttpStatus.NOT_FOUND).send({ message: error.message });
+      if (error.message?.includes('not found')) {
+        res.status(HttpStatus.NOT_FOUND).send({ message: error.message });
+        return;
       }
-      return res
+      res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
         .send({ message: 'Failed to generate property report' });
     }
