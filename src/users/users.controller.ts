@@ -1,7 +1,3 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards } from '@nestjs/common';
-import { UsersService } from './users.service';
-import { CreateUserDto, UpdateUserDto, UpdateUserProfileDto } from './dto/user.dto';
-import { DeactivateAccountDto, ReactivateAccountDto } from './dto/deactivation.dto';
 import {
   Body,
   Controller,
@@ -29,12 +25,20 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUserPayload } from '../auth/types/auth-user.type';
 import { UserRole } from '../types/prisma.types';
 import { UsersService } from './users.service';
-import { CreateUserDto, SearchUsersDto, UpdatePreferencesDto, UpdateUserDto } from './dto/user.dto';
+import {
+  CreateUserDto,
+  SearchUsersDto,
+  UpdatePreferencesDto,
+  UpdateUserDto,
+} from './dto/user.dto';
 import { DeactivateAccountDto, ReactivateAccountDto } from './dto/deactivation.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  // ─── Admin Endpoints ─────────────────────────────────────────────
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -98,23 +102,25 @@ export class UsersController {
     return this.usersService.remove(id);
   }
 
-  // User profile management
+  // ─── Profile Management (#306) ───────────────────────────────────
+
   @UseGuards(JwtAuthGuard)
   @Get('me/profile')
   getProfile(@CurrentUser() user: AuthUserPayload) {
-    return this.usersService.findOne(user.sub);
+    return this.usersService.getProfile(user.sub);
   }
 
   @UseGuards(JwtAuthGuard)
   @Put('me/profile')
   updateProfile(
     @CurrentUser() user: AuthUserPayload,
-    @Body() updateProfileDto: UpdateUserProfileDto,
+    @Body() updateProfileDto: UpdateProfileDto,
   ) {
-    return this.usersService.update(user.sub, updateProfileDto);
+    return this.usersService.updateProfile(user.sub, updateProfileDto);
   }
 
-  // User self-service deactivation
+  // ─── User Self-Service ───────────────────────────────────────────
+
   @UseGuards(JwtAuthGuard)
   @Post(':id/export')
   async exportData(@Param('id') id: string, @CurrentUser() user: AuthUserPayload) {
@@ -198,6 +204,8 @@ export class UsersController {
     });
   }
 
+  // ─── Admin Verification ────────────────────────────────────────
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @Post(':id/verify')
@@ -225,6 +233,8 @@ export class UsersController {
   adminReactivateAccount(@Param('id') id: string, @Body() reactivateDto: ReactivateAccountDto) {
     return this.usersService.reactivate(id, reactivateDto);
   }
+
+  // ─── Preferences & Referrals ────────────────────────────────────
 
   @UseGuards(JwtAuthGuard)
   @Put('me/preferences')
