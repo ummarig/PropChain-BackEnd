@@ -27,6 +27,10 @@ import { TrackingModule } from './tracking/tracking.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { BlockchainModule } from './blockchain/blockchain.module';
 import { TransactionsModule } from './transactions/transactions.module';
+import { FavoritesModule } from './favorites/favorites.module';
+import { PropertyViewsModule } from './property-views/property-views.module';
+import { PropertyComparisonModule } from './property-comparison/property-comparison.module';
+import { NeighborhoodsModule } from './neighborhoods/neighborhoods.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -64,6 +68,10 @@ import { TransactionsModule } from './transactions/transactions.module';
     NotificationsModule,
     BlockchainModule,
     TransactionsModule,
+    FavoritesModule,
+    PropertyViewsModule,
+    PropertyComparisonModule,
+    NeighborhoodsModule,
   ],
 
   controllers: [AppController],

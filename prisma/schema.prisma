@@ -225,6 +225,8 @@ model User {
   digestPreference        DigestPreference?
   createdTaxStrategies    TransactionTaxStrategy[] @relation("CreatedTransactionTaxStrategies")
   transactionHistory      TransactionHistory[]
+  favorites               PropertyFavorite[]
+  propertyViews           PropertyView[]
 
   @@index([email])
   @@index([role])
@@ -395,9 +397,11 @@ model Property {
   yearBuilt    Int?           @map("year_built")
   status       PropertyStatus @default(DRAFT)
   ownerId      String         @map("owner_id")
+  neighborhoodId String?      @map("neighborhood_id")
   latitude     Float?
   longitude    Float?
   features     String[] // Array of features (pool, garage, etc.)
+  viewCount    Int            @default(0) @map("view_count")
   createdAt    DateTime       @default(now()) @map("created_at")
   updatedAt    DateTime       @updatedAt @map("updated_at")
 
@@ -407,12 +411,17 @@ model Property {
   documents    Document[]
   images       PropertyImage[]
   fraudAlerts  FraudAlert[]
+  favorites    PropertyFavorite[]
+  views        PropertyView[]
+  neighborhood Neighborhood?      @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
 
   @@index([ownerId])
   @@index([status])
   @@index([city, state])
   @@index([price])
   @@index([propertyType])
+  @@index([viewCount])
+  @@index([neighborhoodId])
   @@map("properties")
 }
 
