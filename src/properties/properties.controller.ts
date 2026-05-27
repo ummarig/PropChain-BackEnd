@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Query, UseGuards } from '@nestjs/common';
 import { PropertiesService } from './properties.service';
 import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
+import { SearchPropertiesDto } from './dto/search-properties.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -21,6 +22,20 @@ export class PropertiesController {
   @Get()
   findAll() {
     return this.propertiesService.findAll();
+  }
+
+  /**
+   * Advanced property search.
+   * Supports filters: price range (minPrice/maxPrice), location
+   * (city/state/zipCode/country or free-text `location`), propertyType,
+   * bedrooms (exact or min/max), bathrooms (exact or min/max), plus status,
+   * pagination (page, limit) and sorting (sortBy, sortOrder).
+   *
+   * Defined before `:id` so the static path is matched first.
+   */
+  @Get('search')
+  search(@Query() searchDto: SearchPropertiesDto) {
+    return this.propertiesService.searchProperties(searchDto);
   }
 
   @Get(':id')
