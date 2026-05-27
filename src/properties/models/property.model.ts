@@ -67,6 +67,12 @@ export class Property {
   @Field(() => [String])
   features: string[];
 
+  @Field({ nullable: true })
+  virtualTourUrl?: string;
+
+  @Field({ nullable: true })
+  videoUrl?: string;
+
   @Field()
   createdAt: Date;
 
