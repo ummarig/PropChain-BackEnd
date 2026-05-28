@@ -25,7 +25,7 @@ export class NeighborhoodsService {
         amenities: amenities && amenities.length > 0
           ? { create: amenities }
           : undefined,
-      },
+      } as any,
       include: { schools: true, amenities: true },
     });
   }
@@ -75,7 +75,7 @@ export class NeighborhoodsService {
     await this.assertExists(id);
     return this.prisma.neighborhood.update({
       where: { id },
-      data: dto,
+      data: dto as any,
       include: { schools: true, amenities: true },
     });
   }

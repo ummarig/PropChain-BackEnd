@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Put, Delete, Param, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Delete, Param, Patch, Query, UseGuards } from '@nestjs/common';
 import { PropertiesService } from './properties.service';
 import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
 import { AssignAgentDto, UpdateAgentAssignmentDto } from './dto/agent-assignment.dto';
@@ -10,7 +10,6 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUserPayload } from '../auth/types/auth-user.type';
 import { PropertyStatus, UserRole } from '../types/prisma.types';
-import { UserRole } from '../types/prisma.types';
 import {
   BulkPropertyStatusUpdateDto,
   BulkPropertyDeleteDto,
@@ -86,6 +85,8 @@ export class PropertiesController {
       user.sub,
       user.role,
     );
+  }
+
   @Post('bulk/status')
   async bulkUpdatePropertyStatus(
     @Body() body: BulkPropertyStatusUpdateDto,

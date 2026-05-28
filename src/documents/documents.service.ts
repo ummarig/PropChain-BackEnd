@@ -26,6 +26,7 @@ const AUTO_TAG_MAP: Record<string, string[]> = {
 export class DocumentsService {
   constructor(private prisma: PrismaService) {}
 
+
   // ── #401 Categorization ──────────────────────────────────────────────────
 
   async create(dto: CreateDocumentDto, userId: string) {

@@ -31,7 +31,8 @@ import { CommissionsModule } from './commissions/commissions.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { PropertyViewsModule } from './property-views/property-views.module';
 import { PropertyComparisonModule } from './property-comparison/property-comparison.module';
-import { NeighborhoodsModule } from './neighborhoods/neighborhoods.module';
+import { OpenHouseModule } from './open-house/open-house.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -74,6 +75,7 @@ import { NeighborhoodsModule } from './neighborhoods/neighborhoods.module';
     PropertyViewsModule,
     PropertyComparisonModule,
     NeighborhoodsModule,
+    OpenHouseModule,
   ],
 
   controllers: [AppController],

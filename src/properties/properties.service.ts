@@ -21,7 +21,6 @@ import {
   canTransitionPropertyStatus,
   getAllowedNextPropertyStatuses,
 } from './property-status.constants';
-import { PropertyStatus } from '../types/prisma.types';
 
 interface FindAllParams {
   skip?: number;
@@ -73,6 +72,7 @@ export class PropertiesService {
         price: new Decimal(price.toString()),
         squareFeet: squareFeet ? new Decimal(squareFeet.toString()) : null,
         lotSize: lotSize ? new Decimal(lotSize.toString()) : null,
+        status: PropertyStatus.DRAFT,
         latitude: resolvedLat,
         longitude: resolvedLng,
         owner: {
@@ -405,6 +405,8 @@ export class PropertiesService {
     }
 
     return where;
+  }
+
   async bulkUpdatePropertyStatus(
     propertyIds: string[],
     status: PropertyStatus,
