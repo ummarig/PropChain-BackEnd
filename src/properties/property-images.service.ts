@@ -8,10 +8,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { randomBytes } from 'crypto';
+import { randomBytes, createHash } from 'crypto';
 import * as sharp from 'sharp';
 import { PrismaService } from '../database/prisma.service';
 import { PropertyImageResponse } from './dto/property-image.dto';
+import { DuplicateDetectionService } from '../duplicate-detection/duplicate-detection.service';
 
 /**
  * Minimal Multer file shape (we don't depend on @types/multer).
@@ -60,6 +61,7 @@ export class PropertyImagesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly duplicateDetectionService: DuplicateDetectionService,
   ) {
     this.uploadDir = this.configService.get<string>(
       'PROPERTY_IMAGES_UPLOAD_DIR',
