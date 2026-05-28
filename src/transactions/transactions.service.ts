@@ -10,6 +10,9 @@ import {
   TransactionListQueryDto,
   TransactionStatusDto,
   TransactionTypeDto,
+  TransactionAnalyticsDto,
+  TransactionAnalyticsGranularity,
+  TransactionAnalyticsQueryDto,
 } from './dto/transaction.dto';
 
 @Injectable()
@@ -99,7 +102,7 @@ export class TransactionsService {
         total,
         page,
         limit,
-        items: transactions.map((t) => this.toResponseDto(t)),
+        items: transactions.map((t: any) => this.toResponseDto(t)),
       };
     } catch (error) {
       this.logger.error(`Failed to list transactions: ${error.message}`, error.stack);
@@ -286,6 +289,67 @@ export class TransactionsService {
   }
 
   /**
+   * Get transaction analytics for operational dashboards.
+   */
+  async getAnalytics(query: TransactionAnalyticsQueryDto = {}): Promise<TransactionAnalyticsDto> {
+    const where: Record<string, any> = {};
+
+    if (query.type) {
+      where.type = query.type;
+    }
+
+    if (query.startDate || query.endDate) {
+      where.createdAt = {};
+      if (query.startDate) where.createdAt.gte = query.startDate;
+      if (query.endDate) where.createdAt.lte = query.endDate;
+    }
+
+    const transactions = await this.prisma.transaction.findMany({
+      where,
+      select: {
+        amount: true,
+        status: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const totalTransactions = transactions.length;
+    const completedTransactions = transactions.filter((t: any) => t.status === 'COMPLETED');
+    const pendingTransactions = transactions.filter((t: any) => t.status === 'PENDING').length;
+    const cancelledTransactions = transactions.filter((t: any) => t.status === 'CANCELLED').length;
+
+    const totalVolume = this.roundCurrency(
+      transactions.reduce((sum: number, transaction: any) => {
+        return sum + this.toNumber(transaction.amount);
+      }, 0),
+    );
+    const revenue = this.roundCurrency(
+      completedTransactions.reduce((sum: number, transaction: any) => {
+        return sum + this.toNumber(transaction.amount);
+      }, 0),
+    );
+
+    return {
+      totalTransactions,
+      completedTransactions: completedTransactions.length,
+      pendingTransactions,
+      cancelledTransactions,
+      totalVolume,
+      averagePrice: totalTransactions > 0 ? this.roundCurrency(totalVolume / totalTransactions) : 0,
+      completionRate:
+        totalTransactions > 0
+          ? this.roundPercentage((completedTransactions.length / totalTransactions) * 100)
+          : 0,
+      revenue,
+      volumeTrends: this.buildVolumeTrends(
+        transactions,
+        query.granularity ?? TransactionAnalyticsGranularity.MONTH,
+      ),
+    };
+  }
+
+  /**
    * Update transaction status
    */
   async updateTransactionStatus(
@@ -401,7 +465,7 @@ export class TransactionsService {
           version: 1,
         },
       })
-      .then((result) => {
+      .then((result: any) => {
         this.notificationsService.sendNotification(
           user.sub,
           'Tax Strategy Created',
@@ -466,5 +530,99 @@ export class TransactionsService {
       createdAt: transaction.createdAt,
       updatedAt: transaction.updatedAt,
     };
+  }
+
+  private buildVolumeTrends(
+    transactions: Array<{ amount: unknown; status: string; createdAt: Date }>,
+    granularity: TransactionAnalyticsGranularity,
+  ) {
+    const buckets = new Map<
+      string,
+      {
+        transactionCount: number;
+        totalVolume: number;
+        completedCount: number;
+        revenue: number;
+      }
+    >();
+
+    for (const transaction of transactions) {
+      const period = this.formatAnalyticsPeriod(transaction.createdAt, granularity);
+      const amount = this.toNumber(transaction.amount);
+      const bucket = buckets.get(period) ?? {
+        transactionCount: 0,
+        totalVolume: 0,
+        completedCount: 0,
+        revenue: 0,
+      };
+
+      bucket.transactionCount += 1;
+      bucket.totalVolume += amount;
+
+      if (transaction.status === 'COMPLETED') {
+        bucket.completedCount += 1;
+        bucket.revenue += amount;
+      }
+
+      buckets.set(period, bucket);
+    }
+
+    return [...buckets.entries()].map(([period, bucket]) => ({
+      period,
+      transactionCount: bucket.transactionCount,
+      totalVolume: this.roundCurrency(bucket.totalVolume),
+      completedCount: bucket.completedCount,
+      revenue: this.roundCurrency(bucket.revenue),
+    }));
+  }
+
+  private formatAnalyticsPeriod(date: Date, granularity: TransactionAnalyticsGranularity): string {
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+
+    if (granularity === TransactionAnalyticsGranularity.DAY) {
+      return `${year}-${month}-${day}`;
+    }
+
+    if (granularity === TransactionAnalyticsGranularity.WEEK) {
+      const week = this.getIsoWeek(date);
+      return `${week.year}-W${String(week.week).padStart(2, '0')}`;
+    }
+
+    return `${year}-${month}`;
+  }
+
+  private getIsoWeek(date: Date): { year: number; week: number } {
+    const normalized = new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+    );
+    const day = normalized.getUTCDay() || 7;
+    normalized.setUTCDate(normalized.getUTCDate() + 4 - day);
+    const yearStart = new Date(Date.UTC(normalized.getUTCFullYear(), 0, 1));
+    const week = Math.ceil(((normalized.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+
+    return { year: normalized.getUTCFullYear(), week };
+  }
+
+  private toNumber(value: unknown): number {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return Number(value);
+    if (value && typeof (value as { toNumber?: unknown }).toNumber === 'function') {
+      return (value as { toNumber: () => number }).toNumber();
+    }
+    if (value && typeof (value as { toString?: unknown }).toString === 'function') {
+      return Number((value as { toString: () => string }).toString());
+    }
+
+    return 0;
+  }
+
+  private roundCurrency(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
+
+  private roundPercentage(value: number): number {
+    return Math.round(value * 100) / 100;
   }
 }

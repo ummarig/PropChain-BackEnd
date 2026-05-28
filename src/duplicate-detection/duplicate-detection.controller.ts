@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Patch,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Post, Body, Patch, UseGuards } from '@nestjs/common';
 import { DuplicateDetectionService } from './duplicate-detection.service';
 import { CheckDuplicateDto, MergeDuplicateDto } from './dto/duplicate.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -21,10 +15,7 @@ export class DuplicateDetectionController {
     @Body() checkDuplicateDto: CheckDuplicateDto,
     @CurrentUser() user: AuthUserPayload,
   ) {
-    return this.duplicateDetectionService.checkForDuplicates(
-      checkDuplicateDto,
-      user.sub,
-    );
+    return this.duplicateDetectionService.checkForDuplicates(checkDuplicateDto, user.sub);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -33,10 +24,6 @@ export class DuplicateDetectionController {
     @Body() mergeDuplicateDto: MergeDuplicateDto,
     @CurrentUser() user: AuthUserPayload,
   ) {
-    return this.duplicateDetectionService.mergeProperties(
-      mergeDuplicateDto,
-      user.sub,
-      user.role,
-    );
+    return this.duplicateDetectionService.mergeProperties(mergeDuplicateDto, user.sub, user.role);
   }
 }

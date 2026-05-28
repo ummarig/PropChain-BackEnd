@@ -72,10 +72,7 @@ export class PropertyViewsController {
     @Query('since') since?: string,
   ) {
     const sinceDate = this.parseSince(since);
-    const result = await this.propertyViewsService.getUniqueVisitorCount(
-      propertyId,
-      sinceDate,
-    );
+    const result = await this.propertyViewsService.getUniqueVisitorCount(propertyId, sinceDate);
     return { propertyId, ...result };
   }
 

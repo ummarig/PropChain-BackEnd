@@ -21,16 +21,9 @@ export const DEFAULT_PROPERTY_STATUS = PropertyStatus.DRAFT;
  *
  * Terminal-ish states (SOLD) only allow ARCHIVED for record-keeping.
  */
-const ALLOWED_PROPERTY_STATUS_TRANSITIONS: Record<
-  PropertyStatus,
-  readonly PropertyStatus[]
-> = {
+const ALLOWED_PROPERTY_STATUS_TRANSITIONS: Record<PropertyStatus, readonly PropertyStatus[]> = {
   [PropertyStatus.DRAFT]: [PropertyStatus.PENDING, PropertyStatus.ARCHIVED],
-  [PropertyStatus.PENDING]: [
-    PropertyStatus.ACTIVE,
-    PropertyStatus.DRAFT,
-    PropertyStatus.ARCHIVED,
-  ],
+  [PropertyStatus.PENDING]: [PropertyStatus.ACTIVE, PropertyStatus.DRAFT, PropertyStatus.ARCHIVED],
   [PropertyStatus.ACTIVE]: [
     PropertyStatus.UNDER_CONTRACT,
     PropertyStatus.RENTED,

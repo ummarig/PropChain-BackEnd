@@ -33,6 +33,9 @@ import {
   RecordTransactionOnChainDto,
   TransactionResponseDto,
   TransactionListQueryDto,
+  TransactionAnalyticsDto,
+  TransactionAnalyticsGranularity,
+  TransactionAnalyticsQueryDto,
 } from './dto/transaction.dto';
 
 @ApiTags('Transactions')
@@ -93,6 +96,32 @@ export class TransactionsController {
     items: TransactionResponseDto[];
   }> {
     return this.transactionsService.findAll(query);
+  }
+
+  @Get('analytics/summary')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get transaction analytics',
+    description:
+      'Retrieve transaction volume trends, average price, completion rate, and revenue insights',
+  })
+  @ApiQuery({ name: 'startDate', required: false, type: 'string' })
+  @ApiQuery({ name: 'endDate', required: false, type: 'string' })
+  @ApiQuery({
+    name: 'granularity',
+    required: false,
+    enum: TransactionAnalyticsGranularity,
+  })
+  @ApiQuery({ name: 'type', required: false, type: 'string' })
+  @ApiResponse({
+    status: 200,
+    description: 'Transaction analytics summary',
+    type: TransactionAnalyticsDto,
+  })
+  async getAnalytics(
+    @Query() query: TransactionAnalyticsQueryDto,
+  ): Promise<TransactionAnalyticsDto> {
+    return this.transactionsService.getAnalytics(query);
   }
 
   @Get(':id')

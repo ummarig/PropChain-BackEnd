@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, IsEnum, IsUUID, IsDecimal, Min } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsEnum, IsUUID, IsDate, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -164,6 +164,85 @@ export class TransactionListQueryDto {
   @IsNumber()
   @Min(1)
   limit: number = 20;
+}
+
+export enum TransactionAnalyticsGranularity {
+  DAY = 'day',
+  WEEK = 'week',
+  MONTH = 'month',
+}
+
+export class TransactionAnalyticsQueryDto {
+  @ApiPropertyOptional({ description: 'Only include transactions created on or after this date' })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  startDate?: Date;
+
+  @ApiPropertyOptional({ description: 'Only include transactions created on or before this date' })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  endDate?: Date;
+
+  @ApiPropertyOptional({
+    enum: TransactionAnalyticsGranularity,
+    default: TransactionAnalyticsGranularity.MONTH,
+  })
+  @IsOptional()
+  @IsEnum(TransactionAnalyticsGranularity)
+  granularity?: TransactionAnalyticsGranularity = TransactionAnalyticsGranularity.MONTH;
+
+  @ApiPropertyOptional({ enum: TransactionTypeDto })
+  @IsOptional()
+  @IsEnum(TransactionTypeDto)
+  type?: TransactionTypeDto;
+}
+
+export class TransactionVolumeTrendDto {
+  @ApiProperty()
+  period: string;
+
+  @ApiProperty()
+  transactionCount: number;
+
+  @ApiProperty()
+  totalVolume: number;
+
+  @ApiProperty()
+  completedCount: number;
+
+  @ApiProperty()
+  revenue: number;
+}
+
+export class TransactionAnalyticsDto {
+  @ApiProperty()
+  totalTransactions: number;
+
+  @ApiProperty()
+  completedTransactions: number;
+
+  @ApiProperty()
+  pendingTransactions: number;
+
+  @ApiProperty()
+  cancelledTransactions: number;
+
+  @ApiProperty()
+  totalVolume: number;
+
+  @ApiProperty()
+  averagePrice: number;
+
+  @ApiProperty()
+  completionRate: number;
+
+  @ApiProperty()
+  revenue: number;
+
+  @ApiProperty({ type: [TransactionVolumeTrendDto] })
+  volumeTrends: TransactionVolumeTrendDto[];
 }
 
 export class CreateTransactionTaxStrategyDto {

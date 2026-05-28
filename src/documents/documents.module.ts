@@ -23,6 +23,3 @@ export const SIGNED_URL_PROVIDER_TOKEN = 'SIGNED_URL_PROVIDER_TOKEN';
   exports: [DocumentsService],
 })
 export class DocumentsModule {}
-
-
-

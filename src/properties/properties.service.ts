@@ -40,15 +40,8 @@ export class PropertiesService {
   ) {}
 
   async create(createPropertyDto: CreatePropertyDto, ownerId: string) {
-    const {
-      price,
-      squareFeet,
-      lotSize,
-      latitude,
-      longitude,
-      hoaMonthlyFee,
-      ...rest
-    } = createPropertyDto;
+    const { price, squareFeet, lotSize, latitude, longitude, hoaMonthlyFee, ...rest } =
+      createPropertyDto;
 
     // Duplicate address check
     const duplicate = await this.prisma.property.findFirst({
@@ -87,8 +80,7 @@ export class PropertiesService {
         price: new Decimal(price.toString()),
         squareFeet: squareFeet ? new Decimal(squareFeet.toString()) : null,
         lotSize: lotSize ? new Decimal(lotSize.toString()) : null,
-        hoaMonthlyFee:
-          hoaMonthlyFee !== undefined ? new Decimal(hoaMonthlyFee.toString()) : null,
+        hoaMonthlyFee: hoaMonthlyFee !== undefined ? new Decimal(hoaMonthlyFee.toString()) : null,
         status: PropertyStatus.DRAFT,
         latitude: resolvedLat,
         longitude: resolvedLng,
@@ -141,15 +133,8 @@ export class PropertiesService {
   }
 
   async update(id: string, updatePropertyDto: UpdatePropertyDto) {
-    const {
-      price,
-      squareFeet,
-      lotSize,
-      latitude,
-      longitude,
-      hoaMonthlyFee,
-      ...rest
-    } = updatePropertyDto;
+    const { price, squareFeet, lotSize, latitude, longitude, hoaMonthlyFee, ...rest } =
+      updatePropertyDto;
 
     // Duplicate address check (if address fields are being updated)
     if (rest.address || rest.city || rest.state || rest.zipCode || rest.country) {
@@ -273,12 +258,9 @@ export class PropertiesService {
     }
 
     const isOwner = property.ownerId === actorId;
-    const isPrivileged =
-      actorRole === UserRole.ADMIN || actorRole === UserRole.AGENT;
+    const isPrivileged = actorRole === UserRole.ADMIN || actorRole === UserRole.AGENT;
     if (!isOwner && !isPrivileged) {
-      throw new ForbiddenException(
-        'You are not allowed to change the status of this property',
-      );
+      throw new ForbiddenException('You are not allowed to change the status of this property');
     }
 
     const currentStatus = property.status as PropertyStatus;
@@ -419,7 +401,7 @@ export class PropertiesService {
       where.bathrooms = bathroomsFilter;
     }
 
-// Optional status filter
+    // Optional status filter
     if (dto.status) {
       where.status = dto.status;
     }
