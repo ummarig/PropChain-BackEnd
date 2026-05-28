@@ -73,6 +73,18 @@ export class Property {
   @Field({ nullable: true })
   videoUrl?: string;
 
+  @Field({ nullable: true })
+  hoaName?: string;
+
+  @Field(() => Float, { nullable: true })
+  hoaMonthlyFee?: number;
+
+  @Field(() => [String])
+  hoaAmenities: string[];
+
+  @Field({ nullable: true })
+  hoaContactInfo?: string;
+
   @Field()
   createdAt: Date;
 

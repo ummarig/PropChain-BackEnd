@@ -23,11 +23,18 @@ describe('PropertiesService', () => {
     propertyType: 'Condo',
     status: 'DRAFT',
     ownerId: 'user-123',
+    hoaName: 'Beachside HOA',
+    hoaMonthlyFee: new Decimal('325.5'),
+    hoaAmenities: ['Pool', 'Gym'],
+    hoaContactInfo: 'hoa@example.com',
   };
 
   const mockPrismaService = {
     property: {
       create: jest.fn(),
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
       updateMany: jest.fn(),
       deleteMany: jest.fn(),
       findMany: jest.fn(),
@@ -46,6 +53,9 @@ describe('PropertiesService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockPrismaService.property.create.mockResolvedValue(mockProperty);
+    mockPrismaService.property.findFirst.mockResolvedValue(null);
+    mockPrismaService.property.findUnique.mockResolvedValue(mockProperty);
+    mockPrismaService.property.update.mockResolvedValue(mockProperty);
     mockFraudService.evaluatePropertyCreated.mockResolvedValue(null);
     mockGeocodingService.geocodeAddress.mockResolvedValue(null);
     mockGeocodingService.hasAddressChanged.mockReturnValue(false);
@@ -78,6 +88,10 @@ describe('PropertiesService', () => {
         zipCode: '33101',
         price: 450000,
         propertyType: 'Condo',
+        hoaName: 'Beachside HOA',
+        hoaMonthlyFee: 325.5,
+        hoaAmenities: ['Pool', 'Gym'],
+        hoaContactInfo: 'hoa@example.com',
       };
 
       const result = await service.create(createDto, 'user-123');
@@ -94,6 +108,10 @@ describe('PropertiesService', () => {
           zipCode: '33101',
           price: new Decimal('450000'),
           propertyType: 'Condo',
+          hoaName: 'Beachside HOA',
+          hoaMonthlyFee: new Decimal('325.5'),
+          hoaAmenities: ['Pool', 'Gym'],
+          hoaContactInfo: 'hoa@example.com',
           squareFeet: null,
           lotSize: null,
           status: 'DRAFT',
@@ -105,6 +123,28 @@ describe('PropertiesService', () => {
         },
       });
       expect(fraudService.evaluatePropertyCreated).toHaveBeenCalledWith('prop-123');
+    });
+  });
+
+  describe('update', () => {
+    it('should update HOA information', async () => {
+      const result = await service.update('prop-123', {
+        hoaName: 'Updated HOA',
+        hoaMonthlyFee: 400,
+        hoaAmenities: ['Clubhouse', 'Security'],
+        hoaContactInfo: '555-0100',
+      });
+
+      expect(result).toBeDefined();
+      expect(prisma.property.update).toHaveBeenCalledWith({
+        where: { id: 'prop-123' },
+        data: expect.objectContaining({
+          hoaName: 'Updated HOA',
+          hoaMonthlyFee: new Decimal('400'),
+          hoaAmenities: ['Clubhouse', 'Security'],
+          hoaContactInfo: '555-0100',
+        }),
+      });
     });
   });
 

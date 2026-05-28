@@ -40,7 +40,15 @@ export class PropertiesService {
   ) {}
 
   async create(createPropertyDto: CreatePropertyDto, ownerId: string) {
-    const { price, squareFeet, lotSize, latitude, longitude, ...rest } = createPropertyDto;
+    const {
+      price,
+      squareFeet,
+      lotSize,
+      latitude,
+      longitude,
+      hoaMonthlyFee,
+      ...rest
+    } = createPropertyDto;
 
     // Duplicate address check
     const duplicate = await this.prisma.property.findFirst({
@@ -79,6 +87,8 @@ export class PropertiesService {
         price: new Decimal(price.toString()),
         squareFeet: squareFeet ? new Decimal(squareFeet.toString()) : null,
         lotSize: lotSize ? new Decimal(lotSize.toString()) : null,
+        hoaMonthlyFee:
+          hoaMonthlyFee !== undefined ? new Decimal(hoaMonthlyFee.toString()) : null,
         status: PropertyStatus.DRAFT,
         latitude: resolvedLat,
         longitude: resolvedLng,
@@ -131,7 +141,15 @@ export class PropertiesService {
   }
 
   async update(id: string, updatePropertyDto: UpdatePropertyDto) {
-    const { price, squareFeet, lotSize, latitude, longitude, ...rest } = updatePropertyDto;
+    const {
+      price,
+      squareFeet,
+      lotSize,
+      latitude,
+      longitude,
+      hoaMonthlyFee,
+      ...rest
+    } = updatePropertyDto;
 
     // Duplicate address check (if address fields are being updated)
     if (rest.address || rest.city || rest.state || rest.zipCode || rest.country) {
@@ -205,6 +223,8 @@ export class PropertiesService {
         price: price ? new Decimal(price.toString()) : undefined,
         squareFeet: squareFeet ? new Decimal(squareFeet.toString()) : undefined,
         lotSize: lotSize ? new Decimal(lotSize.toString()) : undefined,
+        hoaMonthlyFee:
+          hoaMonthlyFee !== undefined ? new Decimal(hoaMonthlyFee.toString()) : undefined,
         latitude: resolvedLat,
         longitude: resolvedLng,
       },
@@ -466,6 +486,10 @@ export class PropertiesService {
         squareFeet: true,
         lotSize: true,
         yearBuilt: true,
+        hoaName: true,
+        hoaMonthlyFee: true,
+        hoaAmenities: true,
+        hoaContactInfo: true,
         status: true,
         createdAt: true,
         updatedAt: true,
@@ -496,6 +520,13 @@ export class PropertiesService {
       squareFeet: prop.squareFeet,
       lotSize: prop.lotSize,
       yearBuilt: prop.yearBuilt,
+      hoaName: prop.hoaName,
+      hoaMonthlyFee:
+        prop.hoaMonthlyFee === null || prop.hoaMonthlyFee === undefined
+          ? prop.hoaMonthlyFee
+          : Number(prop.hoaMonthlyFee),
+      hoaAmenities: prop.hoaAmenities,
+      hoaContactInfo: prop.hoaContactInfo,
       status: prop.status,
       ownerId: prop.ownerId,
       ownerEmail: prop.owner.email,

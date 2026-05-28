@@ -101,6 +101,27 @@ export class CreatePropertyDto {
   @IsOptional()
   @IsUrl()
   videoUrl?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  hoaName?: string;
+
+  @Field(() => Float, { nullable: true })
+  @IsOptional()
+  @IsNumber()
+  hoaMonthlyFee?: number;
+
+  @Field(() => [String], { nullable: true })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  hoaAmenities?: string[];
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  hoaContactInfo?: string;
 }
 
 import { PropertyStatus } from '../../common/common.types';
@@ -136,6 +157,11 @@ export class UpdatePropertyDto {
   @IsOptional()
   @IsString()
   zipCode?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  country?: string;
 
   @Field(() => Float, { nullable: true })
   @IsOptional()
@@ -202,4 +228,25 @@ export class UpdatePropertyDto {
   @IsOptional()
   @IsUrl()
   videoUrl?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  hoaName?: string;
+
+  @Field(() => Float, { nullable: true })
+  @IsOptional()
+  @IsNumber()
+  hoaMonthlyFee?: number;
+
+  @Field(() => [String], { nullable: true })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  hoaAmenities?: string[];
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  hoaContactInfo?: string;
 }
