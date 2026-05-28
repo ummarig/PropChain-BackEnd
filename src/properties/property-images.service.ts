@@ -109,6 +109,16 @@ export class PropertyImagesService {
       );
     }
 
+    // Duplicate image filename check (across all properties)
+    for (const file of files) {
+      const existingImage = await this.prisma.propertyImage.findFirst({
+        where: { filename: file.originalname },
+      });
+      if (existingImage) {
+        throw new BadRequestException(`Duplicate image detected: '${file.originalname}' already exists for another property.`);
+      }
+    }
+
     const propertyDir = join(this.uploadDir, propertyId);
     await fs.mkdir(propertyDir, { recursive: true });
 
