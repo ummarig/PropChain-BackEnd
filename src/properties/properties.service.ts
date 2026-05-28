@@ -399,7 +399,7 @@ export class PropertiesService {
       where.bathrooms = bathroomsFilter;
     }
 
-    // Optional status filter
+// Optional status filter
     if (dto.status) {
       where.status = dto.status;
     }
