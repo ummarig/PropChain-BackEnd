@@ -41,8 +41,21 @@ export class PropertiesService {
   ) {}
 
   async create(createPropertyDto: CreatePropertyDto, ownerId: string) {
-    const { price, squareFeet, lotSize, latitude, longitude, ...rest } =
-      createPropertyDto;
+    const { price, squareFeet, lotSize, latitude, longitude, ...rest } = createPropertyDto;
+
+    // Duplicate address check
+    const duplicate = await this.prisma.property.findFirst({
+      where: {
+        address: rest.address,
+        city: rest.city,
+        state: rest.state,
+        zipCode: rest.zipCode,
+        country: rest.country,
+      },
+    });
+    if (duplicate) {
+      throw new BadRequestException('A property with this address already exists.');
+    }
 
     // Auto-geocode when the caller didn't supply coordinates explicitly.
     let resolvedLat = latitude;
@@ -118,15 +131,34 @@ export class PropertiesService {
   }
 
   async update(id: string, updatePropertyDto: UpdatePropertyDto) {
-    const { price, squareFeet, lotSize, latitude, longitude, ...rest } =
-      updatePropertyDto;
+    const { price, squareFeet, lotSize, latitude, longitude, ...rest } = updatePropertyDto;
+
+    // Duplicate address check (if address fields are being updated)
+    if (rest.address || rest.city || rest.state || rest.zipCode || rest.country) {
+      const existingProperty = await this.prisma.property.findUnique({ where: { id } });
+      const newAddress = {
+        address: rest.address ?? existingProperty.address,
+        city: rest.city ?? existingProperty.city,
+        state: rest.state ?? existingProperty.state,
+        zipCode: rest.zipCode ?? existingProperty.zipCode,
+        country: rest.country ?? existingProperty.country,
+      };
+      const duplicate = await this.prisma.property.findFirst({
+        where: {
+          ...newAddress,
+          NOT: { id },
+        },
+      });
+      if (duplicate) {
+        throw new BadRequestException('A property with this address already exists.');
+      }
+    }
 
     // If the user explicitly provided lat/lng, honor them. Otherwise,
     // re-geocode when any address-defining field changes.
     let resolvedLat = latitude;
     let resolvedLng = longitude;
-    const callerProvidedCoords =
-      latitude !== undefined && longitude !== undefined;
+    const callerProvidedCoords = latitude !== undefined && longitude !== undefined;
 
     if (!callerProvidedCoords) {
       const existing = await this.prisma.property.findUnique({
