@@ -980,3 +980,27 @@ model DigestPreference {
   @@index([enabled, frequency])
   @@map("digest_preferences")
 }
+
+// Property duplicate detection results
+model PropertyDuplicate {
+  id              String   @id @default(uuid())
+  propertyId      String   @map("property_id")
+  duplicateOfId   String?  @map("duplicate_of_id") // null if unknown match
+  duplicateType    String   @map("duplicate_type") // ADDRESS, IMAGE, ADDRESS_AND_IMAGE
+  confidenceScore Int      @default(0) @map("confidence_score") // 0-100
+  evidence        Json?    @map("evidence") // match details
+  isMerged        Boolean  @default(false) @map("is_merged")
+  mergedIntoId    String?  @map("merged_into_id") // points to surviving property after merge
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  property    Property @relation("DuplicateProperty", fields: [propertyId], references: [id], onDelete: Cascade)
+  duplicateOf Property? @relation("DuplicateTarget", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  mergedInto  Property? @relation("MergedProperty", fields: [mergedIntoId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId])
+  @@index([duplicateOfId])
+  @@index([duplicateType])
+  @@index([isMerged])
+  @@map("property_duplicates")
+}
