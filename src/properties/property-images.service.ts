@@ -8,10 +8,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { randomBytes } from 'crypto';
+import { randomBytes, createHash } from 'crypto';
 import * as sharp from 'sharp';
 import { PrismaService } from '../database/prisma.service';
 import { PropertyImageResponse } from './dto/property-image.dto';
+import { DuplicateDetectionService } from '../duplicate-detection/duplicate-detection.service';
 
 /**
  * Minimal Multer file shape (we don't depend on @types/multer).
@@ -60,6 +61,7 @@ export class PropertyImagesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly duplicateDetectionService: DuplicateDetectionService,
   ) {
     this.uploadDir = this.configService.get<string>(
       'PROPERTY_IMAGES_UPLOAD_DIR',
@@ -107,6 +109,16 @@ export class PropertyImagesService {
       throw new BadRequestException(
         `Adding ${files.length} image(s) would exceed the limit of ${this.maxImagesPerProperty} per property (currently ${existingCount}).`,
       );
+    }
+
+    // Duplicate image filename check (across all properties)
+    for (const file of files) {
+      const existingImage = await this.prisma.propertyImage.findFirst({
+        where: { filename: file.originalname },
+      });
+      if (existingImage) {
+        throw new BadRequestException(`Duplicate image detected: '${file.originalname}' already exists for another property.`);
+      }
     }
 
     const propertyDir = join(this.uploadDir, propertyId);
@@ -310,10 +322,10 @@ export class PropertyImagesService {
     }
   }
 
-  /**
-   * Run sharp once to gather metadata, then emit each variant as WebP.
-   * Returns the persisted DB record mapped to a public response.
-   */
+/**
+     * Run sharp once to gather metadata, then emit each variant as WebP.
+     * Returns the persisted DB record mapped to a public response.
+     */
   private async processAndPersist(
     file: UploadedImageFile,
     propertyId: string,
@@ -356,8 +368,8 @@ export class PropertyImagesService {
       }
     }
 
-    // We track filename of the full variant; thumbnail/medium follow the naming convention.
-    const filename = `full_${baseName}.webp`;
+    // Generate perceptual hash for duplicate detection
+    const uniqueHash = this.generatePerceptualHash(file.buffer);
 
     const created = await this.prisma.propertyImage.create({
       data: {
@@ -372,6 +384,7 @@ export class PropertyImagesService {
         height: meta.height ?? null,
         order,
         isPrimary,
+        uniqueHash,
       },
     });
 
@@ -380,6 +393,11 @@ export class PropertyImagesService {
     );
 
     return this.toResponse(created);
+  }
+
+  private generatePerceptualHash(buffer: Buffer): string {
+    const hash = createHash('sha256').update(buffer).digest('hex').slice(0, 16);
+    return hash;
   }
 
   private buildUrl(propertyId: string, filename: string): string {
