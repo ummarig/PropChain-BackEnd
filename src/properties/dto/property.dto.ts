@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, IsArray, IsIn } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsArray, IsIn, IsUrl } from 'class-validator';
 import { InputType, Field, Float } from '@nestjs/graphql';
 
 export const PROPERTY_STATUS_ENUM = [
@@ -91,6 +91,16 @@ export class CreatePropertyDto {
   @IsOptional()
   @IsNumber()
   longitude?: number;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsUrl()
+  virtualTourUrl?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsUrl()
+  videoUrl?: string;
 }
 
 import { PropertyStatus } from '../../common/common.types';
@@ -182,4 +192,14 @@ export class UpdatePropertyDto {
   @IsOptional()
   @IsNumber()
   longitude?: number;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsUrl()
+  virtualTourUrl?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsUrl()
+  videoUrl?: string;
 }

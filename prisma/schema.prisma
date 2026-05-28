@@ -400,10 +400,12 @@ model Property {
   neighborhoodId String?      @map("neighborhood_id")
   latitude     Float?
   longitude    Float?
-  features     String[] // Array of features (pool, garage, etc.)
+  features        String[] // Array of features (pool, garage, etc.)
+  virtualTourUrl  String?        @map("virtual_tour_url")
+  videoUrl        String?        @map("video_url")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
   viewCount    Int            @default(0) @map("view_count")
-  createdAt    DateTime       @default(now()) @map("created_at")
-  updatedAt    DateTime       @updatedAt @map("updated_at")
 
   // Relations
   owner        User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
