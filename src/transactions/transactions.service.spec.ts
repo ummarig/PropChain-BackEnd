@@ -3,6 +3,7 @@ import { TransactionsService } from './transactions.service';
 import { PrismaService } from '../database/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CommissionsService } from '../commissions/commissions.service';
 import { TransactionTypeDto } from './dto/transaction.dto';
 
 describe('TransactionsService', () => {
@@ -37,6 +38,11 @@ describe('TransactionsService', () => {
     handleTransactionUpdate: jest.fn(),
   };
 
+  const mockCommissionsService = {
+    createCommissionsForTransaction: jest.fn().mockResolvedValue(undefined),
+    updateCommissionsStatus: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -44,6 +50,7 @@ describe('TransactionsService', () => {
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: BlockchainService, useValue: mockBlockchainService },
         { provide: NotificationsService, useValue: mockNotificationsService },
+        { provide: CommissionsService, useValue: mockCommissionsService },
       ],
     }).compile();
 

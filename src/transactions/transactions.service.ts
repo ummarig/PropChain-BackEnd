@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { PrismaService } from '../database/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CommissionsService } from '../commissions/commissions.service';
 import {
   CreateTransactionDto,
   UpdateTransactionDto,
@@ -20,6 +21,7 @@ export class TransactionsService {
     private prisma: PrismaService,
     private blockchainService: BlockchainService,
     private notificationsService: NotificationsService,
+    private commissionsService: CommissionsService,
   ) {}
 
   /**
@@ -55,6 +57,8 @@ export class TransactionsService {
           notes: dto.notes,
         },
       });
+
+      await this.commissionsService.createCommissionsForTransaction(transaction.id);
 
       this.logger.log(`Transaction created: ${transaction.id}`);
       return this.toResponseDto(transaction);
@@ -152,6 +156,10 @@ export class TransactionsService {
           notes: dto.notes,
         },
       });
+
+      if (dto.status) {
+        await this.commissionsService.updateCommissionsStatus(id, dto.status);
+      }
 
       this.logger.log(`Transaction updated: ${id}`);
       return this.toResponseDto(updated);
@@ -264,6 +272,7 @@ export class TransactionsService {
             status: 'COMPLETED',
           },
         });
+        await this.commissionsService.updateCommissionsStatus(id, 'COMPLETED');
       }
 
       this.logger.log(`Transaction ${id} verification result: ${verification.verified}`);
@@ -314,6 +323,8 @@ export class TransactionsService {
         data: { status: status as any },
       });
 
+      await this.commissionsService.updateCommissionsStatus(transactionId, status);
+
       this.logger.log(`Transaction ${transactionId} status updated to ${status}`);
       return this.toResponseDto(updated);
     } catch (error) {
@@ -345,7 +356,7 @@ export class TransactionsService {
     if (!buyer) throw new NotFoundException('Buyer not found');
     if (!seller) throw new NotFoundException('Seller not found');
 
-    return this.prisma.transaction.create({
+    const transaction = await this.prisma.transaction.create({
       data: {
         propertyId: dto.propertyId,
         buyerId: dto.buyerId,
@@ -360,6 +371,10 @@ export class TransactionsService {
         seller: { select: { id: true, firstName: true, lastName: true, email: true } },
       },
     });
+
+    await this.commissionsService.createCommissionsForTransaction(transaction.id);
+
+    return transaction;
   }
 
   /**

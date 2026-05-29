@@ -59,6 +59,7 @@ describe('BlockchainService', () => {
         buyerAddress: '0xBuyer',
         sellerAddress: '0xSeller',
         amount: 1000,
+        timestamp: 1716812345678,
       };
 
       const hash1 = service.generateBlockchainHash(data);

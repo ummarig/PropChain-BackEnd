@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Put, Delete, Param, Patch, Query, UseGuards } from '@nestjs/common';
 import { PropertiesService } from './properties.service';
 import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
+import { AssignAgentDto, UpdateAgentAssignmentDto } from './dto/agent-assignment.dto';
 import { SearchPropertiesDto } from './dto/search-properties.dto';
 import { TransitionPropertyStatusDto } from './dto/transition-status.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -108,5 +109,41 @@ export class PropertiesController {
     @CurrentUser() user: AuthUserPayload,
   ) {
     return this.propertiesService.bulkExportProperties(body.propertyIds, body.filter);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/agents')
+  async assignAgent(
+    @Param('id') propertyId: string,
+    @Body() dto: AssignAgentDto,
+    @CurrentUser() user: AuthUserPayload,
+  ) {
+    return this.propertiesService.assignAgent(propertyId, dto, user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/agents/:agentId')
+  async updateAgentAssignment(
+    @Param('id') propertyId: string,
+    @Param('agentId') agentId: string,
+    @Body() dto: UpdateAgentAssignmentDto,
+    @CurrentUser() user: AuthUserPayload,
+  ) {
+    return this.propertiesService.updateAgentAssignment(propertyId, agentId, dto, user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id/agents/:agentId')
+  async removeAgentAssignment(
+    @Param('id') propertyId: string,
+    @Param('agentId') agentId: string,
+    @CurrentUser() user: AuthUserPayload,
+  ) {
+    return this.propertiesService.removeAgentAssignment(propertyId, agentId, user);
+  }
+
+  @Get(':id/agents')
+  async getAgents(@Param('id') propertyId: string) {
+    return this.propertiesService.getAgents(propertyId);
   }
 }
