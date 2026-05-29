@@ -229,6 +229,7 @@ model User {
   transactionHistory      TransactionHistory[]
   favorites               PropertyFavorite[]
   propertyViews           PropertyView[]
+  transactionNotes        TransactionNote[]            @relation("TransactionNoteAuthor")
 
   @@index([email])
   @@index([role])
@@ -584,6 +585,8 @@ model Transaction {
   blockchainHash     String?           @map("blockchain_hash")
   contractAddress    String?           @map("contract_address")
   notes              String?
+  // Fee breakdown (#565)
+  feeBreakdown       Json?             @map("fee_breakdown")
   // Cancellation (#361)
   cancellationReason String?           @map("cancellation_reason")
   cancelledById      String?           @map("cancelled_by_id")
@@ -603,6 +606,7 @@ model Transaction {
   disputes              Dispute[]
   transactionMilestones TransactionMilestone[]
   transactionHistory    TransactionHistory[]
+  transactionNotes      TransactionNote[]
   cancelledBy           User?    @relation("CancelledTransactions", fields: [cancelledById], references: [id])
 
   @@index([propertyId])
@@ -722,6 +726,7 @@ model UserPreferences {
   quietHoursStart        String?  @map("quiet_hours_start") // "HH:MM" in user timezone
   quietHoursEnd          String?  @map("quiet_hours_end") // "HH:MM" in user timezone
   perEventSettings       Json?    @map("per_event_settings") // fine-grained per-event channel overrides
+  optOutReminders        Boolean  @default(false) @map("opt_out_reminders") // #563
   createdAt              DateTime @default(now()) @map("created_at")
   updatedAt              DateTime @updatedAt @map("updated_at")
 
@@ -1003,10 +1008,11 @@ model TransactionMilestone {
   title         String
   description   String?         @db.Text
   status        MilestoneStatus @default(PENDING)
-  expectedDate  DateTime        @map("expected_date")
-  actualDate    DateTime?       @map("actual_date")
-  createdAt     DateTime        @default(now()) @map("created_at")
-  updatedAt     DateTime        @updatedAt @map("updated_at")
+  expectedDate     DateTime        @map("expected_date")
+  actualDate       DateTime?       @map("actual_date")
+  reminderSentAt   DateTime?       @map("reminder_sent_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
 
   // Relations
   transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
@@ -1158,4 +1164,22 @@ model PropertyDuplicate {
   @@index([duplicateType])
   @@index([isMerged])
   @@map("property_duplicates")
+}
+
+// Transaction notes with visibility rules (#562)
+model TransactionNote {
+  id            String   @id @default(uuid())
+  transactionId String   @map("transaction_id")
+  authorId      String   @map("author_id")
+  content       String   @db.Text
+  isPublic      Boolean  @default(true) @map("is_public")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  author      User        @relation("TransactionNoteAuthor", fields: [authorId], references: [id])
+
+  @@index([transactionId])
+  @@index([authorId])
+  @@map("transaction_notes")
 }

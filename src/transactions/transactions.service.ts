@@ -3,6 +3,7 @@ import { PrismaService } from '../database/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CommissionsService } from '../commissions/commissions.service';
+import { TransactionFeesService } from './transaction-fees.service';
 import {
   CreateTransactionDto,
   UpdateTransactionDto,
@@ -25,6 +26,7 @@ export class TransactionsService {
     private blockchainService: BlockchainService,
     private notificationsService: NotificationsService,
     private commissionsService: CommissionsService,
+    private transactionFeesService: TransactionFeesService,
   ) {}
 
   /**
@@ -49,6 +51,8 @@ export class TransactionsService {
         throw new NotFoundException('Seller not found');
       }
 
+      const feeBreakdown = this.transactionFeesService.calculateFees(Number(dto.amount));
+
       const transaction = await this.prisma.transaction.create({
         data: {
           propertyId: dto.propertyId,
@@ -58,6 +62,7 @@ export class TransactionsService {
           type: dto.type as any,
           status: 'PENDING',
           notes: dto.notes,
+          feeBreakdown: feeBreakdown as any,
         },
       });
 
@@ -542,6 +547,7 @@ export class TransactionsService {
       blockchainHash: transaction.blockchainHash,
       contractAddress: transaction.contractAddress,
       notes: transaction.notes,
+      feeBreakdown: transaction.feeBreakdown ?? undefined,
       createdAt: transaction.createdAt,
       updatedAt: transaction.updatedAt,
     };

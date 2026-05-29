@@ -1,6 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { TransactionsController } from './transactions.controller';
+import { DisputesService } from './disputes.service';
+import { DisputesController } from './disputes.controller';
+import { TransactionFeesService } from './transaction-fees.service';
+import { TransactionNotesService } from './transaction-notes.service';
+import { TransactionRemindersService } from './transaction-reminders.service';
 import { PrismaModule } from '../database/prisma.module';
 import { BlockchainModule } from '../blockchain/blockchain.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -8,8 +13,14 @@ import { CommissionsModule } from '../commissions/commissions.module';
 
 @Module({
   imports: [PrismaModule, BlockchainModule, NotificationsModule, CommissionsModule],
-  providers: [TransactionsService],
-  controllers: [TransactionsController],
-  exports: [TransactionsService],
+  providers: [
+    TransactionsService,
+    DisputesService,
+    TransactionFeesService,
+    TransactionNotesService,
+    TransactionRemindersService,
+  ],
+  controllers: [TransactionsController, DisputesController],
+  exports: [TransactionsService, TransactionFeesService, TransactionNotesService],
 })
 export class TransactionsModule {}
