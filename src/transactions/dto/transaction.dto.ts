@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, IsEnum, IsUUID, IsDate, Min } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsEnum, IsUUID, IsDate, IsIn, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -117,6 +117,15 @@ export class TransactionResponseDto {
 
   @ApiPropertyOptional()
   notes?: string;
+
+  @ApiPropertyOptional()
+  escrowStatus?: string;
+
+  @ApiPropertyOptional()
+  escrowAmount?: any;
+
+  @ApiPropertyOptional()
+  paymentStatus?: string;
 
   @ApiProperty()
   createdAt: Date;
@@ -260,4 +269,22 @@ export class CreateTransactionTaxStrategyDto {
   @IsOptional()
   @IsString()
   explanation?: string;
+}
+
+export class UpdateEscrowDto {
+  @ApiPropertyOptional({ enum: ['PENDING', 'HELD', 'RELEASED', 'REFUNDED'] })
+  @IsOptional()
+  @IsIn(['PENDING', 'HELD', 'RELEASED', 'REFUNDED'])
+  escrowStatus?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  escrowAmount?: number;
+
+  @ApiPropertyOptional({ enum: ['PENDING', 'PARTIAL', 'COMPLETE'] })
+  @IsOptional()
+  @IsIn(['PENDING', 'PARTIAL', 'COMPLETE'])
+  paymentStatus?: string;
 }
