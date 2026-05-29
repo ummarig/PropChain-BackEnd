@@ -2,6 +2,7 @@ import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-val
 import { Type } from 'class-transformer';
 import { PROPERTY_STATUS_ENUM } from './property.dto';
 
+
 export const PROPERTY_SORT_FIELDS = [
   'price',
   'createdAt',
@@ -131,4 +132,56 @@ export class SearchPropertiesDto {
   @IsOptional()
   @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'desc';
+
+  // ----- Metadata -----
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  tag?: string;
+
+  // ----- Amenity -----
+  @IsOptional()
+  @IsString()
+  amenityType?: string;
+
+  // ----- Geo: radius search -----
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  lat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  lng?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  radiusKm?: number;
+
+  // ----- Geo: bounding box -----
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  minLat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  maxLat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  minLng?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  maxLng?: number;
 }
