@@ -4,15 +4,6 @@ import { PrismaService } from '../database/prisma.service';
 import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
 import { AssignAgentDto, UpdateAgentAssignmentDto } from './dto/agent-assignment.dto';
 import { AuthUserPayload } from '../auth/types/auth-user.type';
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { Decimal } from '@prisma/client/runtime/library';
-import { PrismaService } from '../database/prisma.service';
-import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
 import { SearchPropertiesDto } from './dto/search-properties.dto';
 import { FraudService } from '../fraud/fraud.service';
 import { GeocodingService } from './geocoding.service';
@@ -20,6 +11,7 @@ import { PropertyStatus, UserRole } from '../types/prisma.types';
 import {
   canTransitionPropertyStatus,
   getAllowedNextPropertyStatuses,
+  DEFAULT_PROPERTY_STATUS,
 } from './property-status.constants';
 
 interface FindAllParams {
@@ -87,7 +79,7 @@ export class PropertiesService {
         squareFeet: squareFeet ? new Decimal(squareFeet.toString()) : null,
         lotSize: lotSize ? new Decimal(lotSize.toString()) : null,
         hoaMonthlyFee: hoaMonthlyFee !== undefined ? new Decimal(hoaMonthlyFee.toString()) : null,
-        status: PropertyStatus.DRAFT,
+        status: DEFAULT_PROPERTY_STATUS,
         latitude: resolvedLat,
         longitude: resolvedLng,
         owner: {
@@ -103,10 +95,14 @@ export class PropertiesService {
 
   async findAll(params?: FindAllParams) {
     const { skip, take, where, orderBy } = params || {};
+    const finalWhere = where
+      ? { ...where, status: where.status ?? PropertyStatus.ACTIVE }
+      : { status: PropertyStatus.ACTIVE };
+
     return (this.prisma.property as any).findMany({
       skip,
       take,
-      where,
+      where: finalWhere,
       orderBy,
       include: {
         owner: {
@@ -433,12 +429,19 @@ export class PropertiesService {
       where.bathrooms = bathroomsFilter;
     }
 
-    // Optional status filter
-    if (dto.status) {
-      where.status = dto.status;
-    }
+    // Public search only exposes approved listings.
+    // Any search from the public search endpoint must end up returning ACTIVE properties.
+    where.status = PropertyStatus.ACTIVE;
 
     return where;
+  }
+
+  async approveProperty(propertyId: string, actorId: string) {
+    return this.transitionStatus(propertyId, PropertyStatus.ACTIVE, actorId, UserRole.ADMIN);
+  }
+
+  async rejectProperty(propertyId: string, actorId: string) {
+    return this.transitionStatus(propertyId, PropertyStatus.ARCHIVED, actorId, UserRole.ADMIN);
   }
 
   async bulkUpdatePropertyStatus(

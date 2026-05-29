@@ -98,6 +98,20 @@ export class PropertiesController {
     );
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch(':id/approve')
+  approve(@Param('id') id: string, @CurrentUser() user: AuthUserPayload) {
+    return this.propertiesService.approveProperty(id, user.sub);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch(':id/reject')
+  reject(@Param('id') id: string, @CurrentUser() user: AuthUserPayload) {
+    return this.propertiesService.rejectProperty(id, user.sub);
+  }
+
   @Post('bulk/status')
   async bulkUpdatePropertyStatus(
     @Body() body: BulkPropertyStatusUpdateDto,
