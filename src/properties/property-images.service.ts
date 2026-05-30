@@ -385,7 +385,7 @@ export class PropertyImagesService {
     });
 
     this.logger.log(
-      `Stored image ${filename} for property ${propertyId} (order=${order}, primary=${isPrimary})`,
+      `Stored image ${baseName}.webp for property ${propertyId} (order=${order}, primary=${isPrimary})`,
     );
 
     return this.toResponse(created);

@@ -229,6 +229,7 @@ model User {
   transactionHistory         TransactionHistory[]
   favorites                  PropertyFavorite[]
   propertyViews              PropertyView[]
+  openHouseRsvps             OpenHouseRsvp[]
 
   @@index([email])
   @@index([role])
@@ -438,6 +439,7 @@ model Property {
   mergedInto   PropertyDuplicate[] @relation("MergedProperty")
   favorites    PropertyFavorite[]
   views        PropertyView[]
+  openHouses   OpenHouse[]
   neighborhood Neighborhood?      @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
 
   @@index([ownerId])
@@ -1160,4 +1162,46 @@ model PropertyDuplicate {
   @@index([duplicateType])
   @@index([isMerged])
   @@map("property_duplicates")
+}
+
+enum RsvpStatus {
+  ATTENDING
+  DECLINED
+  MAYBE
+}
+
+model OpenHouse {
+  id          String    @id @default(uuid())
+  propertyId  String    @map("property_id")
+  title       String
+  description String?
+  startAt     DateTime  @map("start_at")
+  endAt       DateTime  @map("end_at")
+  isCancelled Boolean   @default(false) @map("is_cancelled")
+  cancelledAt DateTime? @map("cancelled_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  property Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  rsvps    OpenHouseRsvp[]
+
+  @@index([propertyId])
+  @@map("open_houses")
+}
+
+model OpenHouseRsvp {
+  id          String     @id @default(uuid())
+  openHouseId String     @map("open_house_id")
+  userId      String     @map("user_id")
+  status      RsvpStatus @default(ATTENDING)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  openHouse OpenHouse @relation(fields: [openHouseId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([openHouseId, userId])
+  @@index([openHouseId])
+  @@index([userId])
+  @@map("open_house_rsvps")
 }

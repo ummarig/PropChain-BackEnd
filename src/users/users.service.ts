@@ -1,4 +1,10 @@
-import { Injectable, Logger, OnModuleInit, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateUserDto, SearchUsersDto, UpdatePreferencesDto, UpdateUserDto } from './dto/user.dto';
 import { DeactivateAccountDto, ReactivateAccountDto } from './dto/deactivation.dto';
@@ -10,119 +16,117 @@ import { ProfileResponseDto } from './dto/profile-response.dto';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
-  async getProfile(userId: string): Promise<<ProfileResponseDto> {
-  const user = await this.prisma.user.findUnique({
-    where: { id: userId, isDeactivated: false },
-    include: {
-      properties: { select: { id: true } },
-      buyerTransactions: { select: { id: true } },
-      sellerTransactions: { select: { id: true } },
-      _count: {
-        select: {
-          properties: true,
-          buyerTransactions: true,
-          sellerTransactions: true,
+  async getProfile(userId: string): Promise<ProfileResponseDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, isDeactivated: false },
+      include: {
+        properties: { select: { id: true } },
+        buyerTransactions: { select: { id: true } },
+        sellerTransactions: { select: { id: true } },
+        _count: {
+          select: {
+            properties: true,
+            buyerTransactions: true,
+            sellerTransactions: true,
+          },
         },
-      },
-    },
-  });
-
-  if (!user) {
-    throw new NotFoundException('User profile not found');
-  }
-
-  const now = new Date();
-  const createdAt = new Date(user.createdAt);
-  const accountAgeDays = Math.floor(
-    (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
-  );
-
-  return {
-    id: user.id,
-    email: user.email,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    fullName: `${user.firstName} ${user.lastName}`,
-    phone: user.phone,
-    avatar: user.avatar,
-    bio: user.bio || null, // if bio field exists in schema, otherwise omit
-    role: user.role,
-    isVerified: user.isVerified,
-    preferredChannel: user.preferredChannel,
-    languagePreference: user.languagePreference,
-    timezone: user.timezone,
-    contactHours: user.contactHours as { start: string; end: string } | null,
-    address: user.address as any || null, // if address field exists
-    occupation: user.occupation || null,
-    company: user.company || null,
-    referralCode: user.referralCode,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-    lastActivityAt: user.lastActivityAt,
-    statistics: {
-      propertiesCount: user._count.properties,
-      transactionsCount: user._count.buyerTransactions + user._count.sellerTransactions,
-      accountAgeDays,
-    },
-  };
-}
-
-async updateProfile(
-  userId: string,
-  data: UpdateProfileDto,
-): Promise<<ProfileResponseDto> {
-  // Check if email is being changed and if it's already taken
-  if (data.email) {
-    const existingUser = await this.prisma.user.findFirst({
-      where: {
-        email: data.email,
-        NOT: { id: userId },
       },
     });
 
-    if (existingUser) {
-      throw new BadRequestException('Email address is already in use');
+    if (!user) {
+      throw new NotFoundException('User profile not found');
     }
+
+    const now = new Date();
+    const createdAt = new Date(user.createdAt);
+    const accountAgeDays = Math.floor(
+      (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: `${user.firstName} ${user.lastName}`,
+      phone: user.phone,
+      avatar: user.avatar,
+      bio: null,
+      role: user.role,
+      isVerified: user.isVerified,
+      preferredChannel: user.preferredChannel,
+      languagePreference: user.languagePreference,
+      timezone: user.timezone,
+      contactHours: user.contactHours as { start: string; end: string } | null,
+      address: null,
+      occupation: null,
+      company: null,
+      referralCode: user.referralCode,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      lastActivityAt: user.lastActivityAt,
+      statistics: {
+        propertiesCount: user._count.properties,
+        transactionsCount: user._count.buyerTransactions + user._count.sellerTransactions,
+        accountAgeDays,
+      },
+    };
   }
 
-  // Build update data — only include provided fields
-  const updateData: any = {};
-  
-  if (data.firstName !== undefined) updateData.firstName = data.firstName;
-  if (data.lastName !== undefined) updateData.lastName = data.lastName;
-  if (data.email !== undefined) updateData.email = data.email;
-  if (data.phone !== undefined) updateData.phone = data.phone;
-  if (data.avatar !== undefined) updateData.avatar = data.avatar;
-  if (data.bio !== undefined) updateData.bio = data.bio;
-  if (data.preferredChannel !== undefined) updateData.preferredChannel = data.preferredChannel;
-  if (data.languagePreference !== undefined) updateData.languagePreference = data.languagePreference;
-  if (data.timezone !== undefined) updateData.timezone = data.timezone;
-  if (data.contactHours !== undefined) updateData.contactHours = data.contactHours;
-  if (data.address !== undefined) updateData.address = data.address;
-  if (data.occupation !== undefined) updateData.occupation = data.occupation;
-  if (data.company !== undefined) updateData.company = data.company;
+  async updateProfile(userId: string, data: UpdateProfileDto): Promise<ProfileResponseDto> {
+    // Check if email is being changed and if it's already taken
+    if (data.email) {
+      const existingUser = await this.prisma.user.findFirst({
+        where: {
+          email: data.email,
+          NOT: { id: userId },
+        },
+      });
 
-  // Update user
-  const updatedUser = await this.prisma.user.update({
-    where: { id: userId },
-    data: updateData,
-  });
+      if (existingUser) {
+        throw new BadRequestException('Email address is already in use');
+      }
+    }
 
-  // Log the profile update activity
-  await this.prisma.activityLog.create({
-    data: {
-      userId,
-      action: 'UPDATE_PROFILE',
-      entityType: 'USER',
-      entityId: userId,
-      description: 'User updated their profile',
-      metadata: { updatedFields: Object.keys(updateData) },
-    },
-  });
+    // Build update data — only include provided fields
+    const updateData: any = {};
 
-  // Return fresh profile
-  return this.getProfile(userId);
-}
+    if (data.firstName !== undefined) updateData.firstName = data.firstName;
+    if (data.lastName !== undefined) updateData.lastName = data.lastName;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.avatar !== undefined) updateData.avatar = data.avatar;
+    if (data.bio !== undefined) updateData.bio = data.bio;
+    if (data.preferredChannel !== undefined) updateData.preferredChannel = data.preferredChannel;
+    if (data.languagePreference !== undefined)
+      updateData.languagePreference = data.languagePreference;
+    if (data.timezone !== undefined) updateData.timezone = data.timezone;
+    if (data.contactHours !== undefined) updateData.contactHours = data.contactHours;
+    if (data.address !== undefined) updateData.address = data.address;
+    if (data.occupation !== undefined) updateData.occupation = data.occupation;
+    if (data.company !== undefined) updateData.company = data.company;
+
+    // Update user
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    // Log the profile update activity
+    await this.prisma.activityLog.create({
+      data: {
+        userId,
+        action: 'UPDATE_PROFILE',
+        entityType: 'USER',
+        entityId: userId,
+        description: 'User updated their profile',
+        metadata: { updatedFields: Object.keys(updateData) },
+      },
+    });
+
+    // Return fresh profile
+    return this.getProfile(userId);
+  }
 
   private readonly logger = new Logger(UsersService.name);
 

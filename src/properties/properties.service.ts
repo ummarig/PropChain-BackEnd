@@ -1,9 +1,3 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
-import { Decimal } from '@prisma/client/runtime/library';
-import { PrismaService } from '../database/prisma.service';
-import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
-import { AssignAgentDto, UpdateAgentAssignmentDto } from './dto/agent-assignment.dto';
-import { AuthUserPayload } from '../auth/types/auth-user.type';
 import {
   BadRequestException,
   ForbiddenException,
@@ -13,6 +7,8 @@ import {
 import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaService } from '../database/prisma.service';
 import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
+import { AssignAgentDto, UpdateAgentAssignmentDto } from './dto/agent-assignment.dto';
+import { AuthUserPayload } from '../auth/types/auth-user.type';
 import { SearchPropertiesDto } from './dto/search-properties.dto';
 import { FraudService } from '../fraud/fraud.service';
 import { GeocodingService } from './geocoding.service';
@@ -171,6 +167,7 @@ export class PropertiesService {
     // Duplicate address check (if address fields are being updated)
     if (rest.address || rest.city || rest.state || rest.zipCode || rest.country) {
       const existingProperty = await this.prisma.property.findUnique({ where: { id } });
+      if (!existingProperty) throw new NotFoundException(`Property ${id} not found`);
       const newAddress = {
         address: rest.address ?? existingProperty.address,
         city: rest.city ?? existingProperty.city,
@@ -614,7 +611,10 @@ export class PropertiesService {
       data: {
         propertyId,
         agentId: dto.agentId,
-        commissionRate: dto.commissionRate !== undefined ? new Decimal(dto.commissionRate.toString()) : new Decimal('0.03'),
+        commissionRate:
+          dto.commissionRate !== undefined
+            ? new Decimal(dto.commissionRate.toString())
+            : new Decimal('0.03'),
         contactPhone: dto.contactPhone ?? null,
         contactEmail: dto.contactEmail ?? null,
       },
@@ -646,7 +646,9 @@ export class PropertiesService {
     }
 
     if (user.role !== 'ADMIN' && property.ownerId !== user.sub) {
-      throw new ForbiddenException('Only the property owner or an admin can update agent assignments');
+      throw new ForbiddenException(
+        'Only the property owner or an admin can update agent assignments',
+      );
     }
 
     const assignment = await (this.prisma as any).propertyAgent.findUnique({
@@ -669,7 +671,8 @@ export class PropertiesService {
         },
       },
       data: {
-        commissionRate: dto.commissionRate !== undefined ? new Decimal(dto.commissionRate.toString()) : undefined,
+        commissionRate:
+          dto.commissionRate !== undefined ? new Decimal(dto.commissionRate.toString()) : undefined,
         contactPhone: dto.contactPhone !== undefined ? dto.contactPhone : undefined,
         contactEmail: dto.contactEmail !== undefined ? dto.contactEmail : undefined,
       },
@@ -696,7 +699,9 @@ export class PropertiesService {
     }
 
     if (user.role !== 'ADMIN' && property.ownerId !== user.sub) {
-      throw new ForbiddenException('Only the property owner or an admin can remove agent assignments');
+      throw new ForbiddenException(
+        'Only the property owner or an admin can remove agent assignments',
+      );
     }
 
     const assignment = await (this.prisma as any).propertyAgent.findUnique({

@@ -96,7 +96,7 @@ export class PropertyReportService {
     const priceHigh = property.price.times(1.2);
 
     const [avgPrice, count, recentSales] = await Promise.all([
-      this.prisma.property.average({
+      this.prisma.property.aggregate({
         where: {
           city: property.city,
           state: property.state,

@@ -66,6 +66,31 @@ export class DocumentsService {
     return doc;
   }
 
+  async findAuthorizedById(id: string, userId: string) {
+    const doc = await this.prisma.document.findUnique({ where: { id } });
+    if (!doc) throw new NotFoundException('Document not found');
+    if (doc.userId !== userId) throw new NotFoundException('Document not found');
+    return doc;
+  }
+
+  toObjectKey(fileUrl: string): string {
+    try {
+      return new URL(fileUrl).pathname.replace(/^\//, '');
+    } catch {
+      return fileUrl;
+    }
+  }
+
+  async buildUploadObjectKey(opts: {
+    mimeType: string;
+    userId: string;
+    documentId?: string;
+  }): Promise<string> {
+    const ext = opts.mimeType.split('/')[1] ?? 'bin';
+    const name = opts.documentId ?? crypto.randomUUID();
+    return `documents/${opts.userId}/${name}.${ext}`;
+  }
+
   async update(id: string, dto: UpdateDocumentDto) {
     await this.findOne(id);
     return this.prisma.document.update({ where: { id }, data: dto as any });
