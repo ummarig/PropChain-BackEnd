@@ -6,7 +6,6 @@ import { BlockchainService } from '../blockchain/blockchain.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TransactionAnalyticsGranularity, TransactionTypeDto } from './dto/transaction.dto';
 import { CommissionsService } from '../commissions/commissions.service';
-import { TransactionTypeDto } from './dto/transaction.dto';
 
 describe('TransactionsService', () => {
   let service: TransactionsService;

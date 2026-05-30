@@ -3,7 +3,7 @@ import { PropertyStatus } from '../types/prisma.types';
 /**
  * Default status assigned when a property is created.
  */
-export const DEFAULT_PROPERTY_STATUS = PropertyStatus.DRAFT;
+export const DEFAULT_PROPERTY_STATUS = PropertyStatus.PENDING;
 
 /**
  * Property status workflow state machine.
