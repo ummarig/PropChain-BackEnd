@@ -597,6 +597,11 @@ model Transaction {
   blockchainHash     String?           @map("blockchain_hash")
   contractAddress    String?           @map("contract_address")
   notes              String?
+  // Escrow and payment tracking (#561)
+  escrowStatus     String?   @map("escrow_status") // PENDING, HELD, RELEASED, REFUNDED
+  escrowAmount     Decimal?  @map("escrow_amount")
+  escrowReleasedAt DateTime? @map("escrow_released_at")
+  paymentStatus    String?   @map("payment_status") // PENDING, PARTIAL, COMPLETE
   // Cancellation (#361)
   cancellationReason String?           @map("cancellation_reason")
   cancelledById      String?           @map("cancelled_by_id")
@@ -662,6 +667,7 @@ model Document {
   fileSize       Int          @map("file_size") // in bytes
   mimeType       String       @map("mime_type")
   description    String?
+  stage          String?  // transaction lifecycle stage (#559)
   // Categorization (#401)
   category       String?
   tags           String[]     @default([])

@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Patch,
   Post,
   Body,
   Param,
@@ -21,6 +22,7 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { TransactionsService } from './transactions.service';
+import { TransactionAuditService } from './transaction-audit.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -30,6 +32,7 @@ import { UserRole } from '../types/prisma.types';
 import {
   CreateTransactionDto,
   UpdateTransactionDto,
+  UpdateEscrowDto,
   RecordTransactionOnChainDto,
   TransactionResponseDto,
   TransactionListQueryDto,
@@ -43,7 +46,10 @@ import {
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class TransactionsController {
-  constructor(private transactionsService: TransactionsService) {}
+  constructor(
+    private transactionsService: TransactionsService,
+    private transactionAuditService: TransactionAuditService,
+  ) {}
 
   @Post()
   @Roles(UserRole.AGENT, UserRole.ADMIN)
@@ -253,5 +259,39 @@ export class TransactionsController {
   })
   async getBlockchainStats(): Promise<any> {
     return this.transactionsService.getBlockchainStats();
+  }
+
+  @Patch(':id/escrow')
+  @ApiOperation({ summary: 'Update escrow and payment status (#561)' })
+  async updateEscrow(
+    @Param('id') id: string,
+    @Body() dto: UpdateEscrowDto,
+    @CurrentUser() user: AuthUserPayload,
+  ) {
+    return this.transactionsService.updateEscrow(id, dto, user.sub);
+  }
+
+  @Get(':id/audit')
+  @ApiOperation({ summary: 'Get transaction audit log with filtering (#558)' })
+  @ApiQuery({ name: 'actorId', required: false })
+  @ApiQuery({ name: 'dateFrom', required: false })
+  @ApiQuery({ name: 'dateTo', required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  async getAuditLog(
+    @Param('id') transactionId: string,
+    @Query('actorId') actorId?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.transactionAuditService.findByTransaction(transactionId, {
+      actorId,
+      dateFrom,
+      dateTo,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
   }
 }

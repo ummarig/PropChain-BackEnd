@@ -3,6 +3,7 @@ import { PrismaService } from '../database/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CommissionsService } from '../commissions/commissions.service';
+import { TimelineService } from './timeline.service';
 import { TransactionAuditService } from './transaction-audit.service';
 import { canTransitionTransactionStatus } from './transaction-status.constants';
 import { TransactionStatus } from '../types/prisma.types';
@@ -28,6 +29,7 @@ export class TransactionsService {
     private blockchainService: BlockchainService,
     private notificationsService: NotificationsService,
     private commissionsService: CommissionsService,
+    private timelineService: TimelineService,
     private transactionAuditService: TransactionAuditService,
   ) {}
 
@@ -404,6 +406,9 @@ export class TransactionsService {
 
       await this.commissionsService.updateCommissionsStatus(transactionId, status);
 
+      // Auto-create timeline stage event (#560)
+      await this.timelineService.addStageEvent(transactionId, status);
+
       this.logger.log(`Transaction ${transactionId} status updated to ${status}`);
       return this.toResponseDto(updated);
     } catch (error) {
@@ -545,6 +550,36 @@ export class TransactionsService {
   /**
    * Convert transaction to response DTO
    */
+  async updateEscrow(transactionId: string, dto: any, actorId?: string) {
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { id: transactionId },
+    });
+    if (!transaction) throw new NotFoundException('Transaction not found');
+
+    const data: any = {};
+    if (dto.escrowStatus !== undefined) data.escrowStatus = dto.escrowStatus;
+    if (dto.escrowAmount !== undefined) data.escrowAmount = dto.escrowAmount;
+    if (dto.paymentStatus !== undefined) data.paymentStatus = dto.paymentStatus;
+    if (dto.escrowStatus === 'RELEASED') data.escrowReleasedAt = new Date();
+
+    const updated = await this.prisma.transaction.update({
+      where: { id: transactionId },
+      data,
+    });
+
+    if (dto.escrowStatus === 'RELEASED' || dto.paymentStatus === 'COMPLETE') {
+      await this.notificationsService.sendNotification(
+        transaction.buyerId,
+        'Payment Milestone Update',
+        `Escrow/payment milestone reached for transaction ${transactionId}`,
+        'TRANSACTION_UPDATE',
+        { transactionId, escrowStatus: dto.escrowStatus, paymentStatus: dto.paymentStatus },
+      );
+    }
+
+    return this.toResponseDto(updated);
+  }
+
   private toResponseDto(transaction: any): TransactionResponseDto {
     return {
       id: transaction.id,
@@ -557,6 +592,9 @@ export class TransactionsService {
       blockchainHash: transaction.blockchainHash,
       contractAddress: transaction.contractAddress,
       notes: transaction.notes,
+      escrowStatus: transaction.escrowStatus ?? undefined,
+      escrowAmount: transaction.escrowAmount ?? undefined,
+      paymentStatus: transaction.paymentStatus ?? undefined,
       createdAt: transaction.createdAt,
       updatedAt: transaction.updatedAt,
     };
