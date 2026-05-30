@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException 
 import * as crypto from 'crypto';
 import * as archiver from 'archiver';
 import { Response } from 'express';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../database/prisma.service';
 import {
   CreateDocumentDto,
@@ -50,12 +51,25 @@ export class DocumentsService {
     });
   }
 
-  async findAll(userId: string, filter: FilterDocumentsDto = {}) {
-    const where: any = { userId };
+  async findAll(userId: string, filter: FilterDocumentsDto | any = {}, userRole?: string) {
+    const where: any = {};
+
+    // Issue #570: Access Control Defaults
+    if (userRole !== 'ADMIN') {
+      where.OR = [
+        { userId },
+        { isPublic: true },
+        { sharedWith: { has: userId } }
+      ];
+    }
+
     if (filter.category) where.category = filter.category;
     if (filter.tags?.length) where.tags = { hasSome: filter.tags };
     if (filter.isExpired !== undefined) where.isExpired = filter.isExpired;
     if (filter.documentType) where.documentType = filter.documentType;
+    
+    // Issue #573: Hide expired/archived by default
+    where.status = filter.status || 'ACTIVE';
 
     return this.prisma.document.findMany({ where, orderBy: { createdAt: 'desc' } });
   }
@@ -101,15 +115,55 @@ export class DocumentsService {
     return this.prisma.document.delete({ where: { id } });
   }
 
+  async findAuthorizedById(id: string, userId: string, userRole?: string) {
+    const doc = await this.findOne(id);
+    
+    const isAdmin = userRole === 'ADMIN';
+    const isOwner = doc.userId === userId;
+    const isShared = doc.sharedWith.includes(userId);
+    
+    if (!isAdmin && !isOwner && !doc.isPublic && !isShared) {
+      throw new ForbiddenException('Access denied to this document');
+    }
+    
+    return doc;
+  }
+
+  // ── #572 Version History ─────────────────────────────────────────────────
+
+  async getVersions(id: string, userId: string, userRole?: string) {
+    await this.findAuthorizedById(id, userId, userRole);
+    return this.prisma.documentVersion.findMany({
+      where: { documentId: id },
+      orderBy: { versionNumber: 'desc' },
+    });
+  }
+
+  async getVersion(id: string, versionId: string, userId: string, userRole?: string) {
+    await this.findAuthorizedById(id, userId, userRole);
+    const version = await this.prisma.documentVersion.findUnique({ where: { id: versionId } });
+    if (!version || version.documentId !== id) throw new NotFoundException('Version not found');
+    return version;
+  }
+
   // ── #402 Expiration ──────────────────────────────────────────────────────
 
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async markExpiredDocuments() {
     const now = new Date();
-    const result = await this.prisma.document.updateMany({
-      where: { expiresAt: { lte: now }, isExpired: false },
-      data: { isExpired: true },
+    const expiredResult = await this.prisma.document.updateMany({
+      where: { status: 'ACTIVE', expiresAt: { lte: now } },
+      data: { isExpired: true, status: 'EXPIRED' },
     });
-    return { marked: result.count };
+
+    const archiveThreshold = new Date();
+    archiveThreshold.setDate(archiveThreshold.getDate() - 30);
+
+    const archivedResult = await this.prisma.document.updateMany({
+      where: { status: 'EXPIRED', expiresAt: { lte: archiveThreshold } },
+      data: { status: 'ARCHIVED', archivedAt: now },
+    });
+    return { marked: expiredResult.count, archived: archivedResult.count };
   }
 
   async getExpiringDocuments(withinDays = 7) {

@@ -153,6 +153,12 @@ enum MilestoneStatus {
   DELAYED
 }
 
+enum DocumentStatus {
+  ACTIVE
+  EXPIRED
+  ARCHIVED
+}
+
 // User model
 model User {
   id                       String    @id @default(uuid())
@@ -656,10 +662,16 @@ model Document {
   // Categorization (#401)
   category       String?
   tags           String[]     @default([])
+  // Access Control (#570)
+  isPublic       Boolean      @default(false) @map("is_public")
+  sharedWith     String[]     @default([]) @map("shared_with")
   // Expiration (#402)
   expiresAt      DateTime?    @map("expires_at")
   isExpired      Boolean      @default(false) @map("is_expired")
   expiryNotified Boolean      @default(false) @map("expiry_notified")
+  // Archival Workflow (#573)
+  status         DocumentStatus @default(ACTIVE)
+  archivedAt     DateTime?    @map("archived_at")
   // eSignature (#403)
   signedBy       String?      @map("signed_by")
   signedAt       DateTime?    @map("signed_at")
