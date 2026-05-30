@@ -16,6 +16,7 @@ import {
   BlockchainNetwork,
   GetBlockchainStatsDto,
 } from './dto/blockchain.dto';
+import { BlockchainErrorClassifier, BlockchainErrorType } from './errors/blockchain-error';
 
 interface BlockchainConfig {
   enabled: boolean;
@@ -243,9 +244,27 @@ export class BlockchainService {
 
       this.logger.log(`Recording transaction ${dto.transactionId} on ${this.config.network}`);
 
-      // In a real implementation, this would interact with the smart contract
-      // For now, we'll simulate the transaction recording
-      const transactionHash = await this.simulateSmartContractCall(dto, blockchainHash);
+      let transactionHash: string;
+      let attempt = 0;
+      const maxRetries = 3;
+
+      while (true) {
+        attempt++;
+        try {
+          transactionHash = await this.simulateSmartContractCall(dto, blockchainHash);
+          break; // Success, exit retry loop
+        } catch (error) {
+          const errorType = BlockchainErrorClassifier.classify(error);
+          
+          if (errorType === BlockchainErrorType.RETRYABLE && attempt < maxRetries) {
+            this.logger.warn(`Blockchain call failed (attempt ${attempt}/${maxRetries}), retrying...`);
+            await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+          } else {
+            const actionableMessage = BlockchainErrorClassifier.getActionableMessage(error);
+            throw new InternalServerErrorException(actionableMessage);
+          }
+        }
+      }
 
       // Update transaction in database with blockchain data
       const updated = await this.prisma.transaction.update({
