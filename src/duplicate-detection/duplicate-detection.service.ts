@@ -234,6 +234,64 @@ export class DuplicateDetectionService {
     };
   }
 
+  // ---- Flagging workflow (#553) ----
+
+  async flagForReview(
+    propertyId: string,
+    duplicateOfId: string | undefined,
+    reviewNotes?: string,
+  ): Promise<any> {
+    const property = await this.prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) {
+      throw new NotFoundException('Property not found');
+    }
+
+    const record = await this.prisma.propertyDuplicate.create({
+      data: {
+        propertyId,
+        duplicateOfId: duplicateOfId ?? null,
+        duplicateType: 'FLAGGED',
+        confidenceScore: 0,
+        flaggedForReview: true,
+        reviewNotes: reviewNotes ?? null,
+      } as any,
+    });
+
+    this.logger.log(
+      `Property ${propertyId} flagged for duplicate review. Notes: ${reviewNotes ?? 'none'}`,
+    );
+
+    return record;
+  }
+
+  async getFlags(): Promise<any[]> {
+    return (this.prisma as any).propertyDuplicate.findMany({
+      where: { flaggedForReview: true, isMerged: false, isResolved: false },
+      include: {
+        property: {
+          select: { id: true, title: true, address: true, city: true, state: true },
+        },
+        duplicateOf: {
+          select: { id: true, title: true, address: true, city: true, state: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async resolveFlag(flagId: string): Promise<any> {
+    const flag = await (this.prisma as any).propertyDuplicate.findUnique({
+      where: { id: flagId },
+    });
+    if (!flag) {
+      throw new NotFoundException('Duplicate flag not found');
+    }
+    return (this.prisma as any).propertyDuplicate.update({
+      where: { id: flagId },
+      data: { isResolved: true },
+    });
+  }
+
   private async findSimilarImages(
     hashes: string[],
     excludeOwnerId: string,

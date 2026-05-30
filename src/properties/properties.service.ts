@@ -10,6 +10,7 @@ import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
 import { AssignAgentDto, UpdateAgentAssignmentDto } from './dto/agent-assignment.dto';
 import { AuthUserPayload } from '../auth/types/auth-user.type';
 import { SearchPropertiesDto } from './dto/search-properties.dto';
+import { CreateAmenityDto, UpdateAmenityDto } from './dto/amenity.dto';
 import { FraudService } from '../fraud/fraud.service';
 import { GeocodingService } from './geocoding.service';
 import { PropertyStatus, UserRole } from '../types/prisma.types';
@@ -494,6 +495,64 @@ export class PropertiesService {
       where.yearBuilt = yearFilter;
     }
 
+    // Metadata: category and tag
+    if (dto.category) {
+      where.category = { equals: dto.category, mode: 'insensitive' };
+    }
+    if (dto.tag) {
+      where.tags = { has: dto.tag };
+    }
+
+    // Amenity type filter (via relation)
+    if (dto.amenityType) {
+      where.amenities = {
+        some: { amenityType: { equals: dto.amenityType, mode: 'insensitive' } },
+      };
+    }
+
+    // Geo: validate lat/lng usage
+    const hasLat = dto.lat !== undefined;
+    const hasLng = dto.lng !== undefined;
+    if (hasLat !== hasLng) {
+      throw new BadRequestException('Both lat and lng must be provided together');
+    }
+
+    const hasBoundingBox =
+      dto.minLat !== undefined ||
+      dto.maxLat !== undefined ||
+      dto.minLng !== undefined ||
+      dto.maxLng !== undefined;
+
+    if (hasLat && hasLng) {
+      if (dto.radiusKm !== undefined) {
+        // Approximate radius as bounding box (1 degree lat ≈ 111km)
+        const latDelta = dto.radiusKm / 111;
+        const lngDelta = dto.radiusKm / (111 * Math.cos((dto.lat! * Math.PI) / 180));
+        where.latitude = { gte: dto.lat! - latDelta, lte: dto.lat! + latDelta };
+        where.longitude = { gte: dto.lng! - lngDelta, lte: dto.lng! + lngDelta };
+      } else if (!hasBoundingBox) {
+        throw new BadRequestException(
+          'When providing lat/lng, either radiusKm or bounding box params (minLat/maxLat/minLng/maxLng) must also be provided',
+        );
+      }
+    }
+
+    // Bounding box filter
+    if (hasBoundingBox) {
+      const latFilter: Record<string, number> = {};
+      const lngFilter: Record<string, number> = {};
+      if (dto.minLat !== undefined) latFilter.gte = dto.minLat;
+      if (dto.maxLat !== undefined) latFilter.lte = dto.maxLat;
+      if (dto.minLng !== undefined) lngFilter.gte = dto.minLng;
+      if (dto.maxLng !== undefined) lngFilter.lte = dto.maxLng;
+      if (Object.keys(latFilter).length > 0) {
+        where.latitude = { ...(where.latitude as Record<string, number> | undefined), ...latFilter };
+      }
+      if (Object.keys(lngFilter).length > 0) {
+        where.longitude = { ...(where.longitude as Record<string, number> | undefined), ...lngFilter };
+      }
+    }
+
     return where;
   }
 
@@ -827,5 +886,62 @@ export class PropertiesService {
       updatedAt: pa.updatedAt,
       agent: pa.agent,
     }));
+  }
+
+  // ---- Amenity methods (#551) ----
+
+  async addAmenity(propertyId: string, dto: CreateAmenityDto) {
+    const property = await this.prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) {
+      throw new NotFoundException('Property not found');
+    }
+    return (this.prisma as any).propertyAmenity.create({
+      data: {
+        propertyId,
+        name: dto.name,
+        amenityType: dto.amenityType,
+        description: dto.description ?? null,
+        isAvailable: dto.isAvailable ?? true,
+      },
+    });
+  }
+
+  async getAmenities(propertyId: string) {
+    const property = await this.prisma.property.findUnique({ where: { id: propertyId } });
+    if (!property) {
+      throw new NotFoundException('Property not found');
+    }
+    return (this.prisma as any).propertyAmenity.findMany({
+      where: { propertyId },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async updateAmenity(propertyId: string, amenityId: string, dto: UpdateAmenityDto) {
+    const amenity = await (this.prisma as any).propertyAmenity.findUnique({
+      where: { id: amenityId },
+    });
+    if (!amenity || amenity.propertyId !== propertyId) {
+      throw new NotFoundException('Amenity not found for this property');
+    }
+    return (this.prisma as any).propertyAmenity.update({
+      where: { id: amenityId },
+      data: {
+        name: dto.name,
+        amenityType: dto.amenityType,
+        description: dto.description,
+        isAvailable: dto.isAvailable,
+      },
+    });
+  }
+
+  async removeAmenity(propertyId: string, amenityId: string) {
+    const amenity = await (this.prisma as any).propertyAmenity.findUnique({
+      where: { id: amenityId },
+    });
+    if (!amenity || amenity.propertyId !== propertyId) {
+      throw new NotFoundException('Amenity not found for this property');
+    }
+    return (this.prisma as any).propertyAmenity.delete({ where: { id: amenityId } });
   }
 }

@@ -410,6 +410,8 @@ model Property {
   latitude     Float?
   longitude    Float?
   features        String[] // Array of features (pool, garage, etc.)
+  category        String?
+  tags            String[]       @default([])
   virtualTourUrl  String?        @map("virtual_tour_url")
   videoUrl        String?        @map("video_url")
   hoaName         String?        @map("hoa_name")
@@ -447,6 +449,7 @@ model Property {
   views        PropertyView[]
   openHouses   OpenHouse[]
   neighborhood Neighborhood?      @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
+  amenities    PropertyAmenity[]
 
   @@index([ownerId])
   @@index([status])
@@ -1154,6 +1157,23 @@ model Commission {
   @@map("commissions")
 }
 
+model PropertyAmenity {
+  id          String   @id @default(uuid())
+  propertyId  String   @map("property_id")
+  name        String
+  amenityType String   @map("amenity_type")
+  description String?
+  isAvailable Boolean  @default(true) @map("is_available")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([amenityType])
+  @@map("property_amenities")
+}
+
 // Property duplicate detection results
 model PropertyDuplicate {
   id              String   @id @default(uuid())
@@ -1162,10 +1182,13 @@ model PropertyDuplicate {
   duplicateType    String   @map("duplicate_type") // ADDRESS, IMAGE, ADDRESS_AND_IMAGE
   confidenceScore Int      @default(0) @map("confidence_score") // 0-100
   evidence        Json?    @map("evidence") // match details
-  isMerged        Boolean  @default(false) @map("is_merged")
-  mergedIntoId    String?  @map("merged_into_id") // points to surviving property after merge
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  isMerged          Boolean  @default(false) @map("is_merged")
+  mergedIntoId      String?  @map("merged_into_id") // points to surviving property after merge
+  flaggedForReview  Boolean  @default(false) @map("flagged_for_review")
+  reviewNotes       String?  @map("review_notes")
+  isResolved        Boolean  @default(false) @map("is_resolved")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   property    Property @relation("DuplicateProperty", fields: [propertyId], references: [id], onDelete: Cascade)
   duplicateOf Property? @relation("DuplicateTarget", fields: [duplicateOfId], references: [id], onDelete: SetNull)

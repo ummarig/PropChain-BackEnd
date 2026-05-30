@@ -28,6 +28,7 @@ import {
   BulkPropertyDeleteDto,
   BulkPropertyExportDto,
 } from './dto/bulk-operations.dto';
+import { CreateAmenityDto, UpdateAmenityDto } from './dto/amenity.dto';
 import { PropertyReportService } from './report/property-report.service';
 import { Response } from 'express';
 
@@ -201,5 +202,40 @@ export class PropertiesController {
   @Get(':id/agents')
   async getAgents(@Param('id') propertyId: string) {
     return this.propertiesService.getAgents(propertyId);
+  }
+
+  // ---- Amenity endpoints (#551) ----
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/amenities')
+  async addAmenity(
+    @Param('id') propertyId: string,
+    @Body() dto: CreateAmenityDto,
+  ) {
+    return this.propertiesService.addAmenity(propertyId, dto);
+  }
+
+  @Get(':id/amenities')
+  async getAmenities(@Param('id') propertyId: string) {
+    return this.propertiesService.getAmenities(propertyId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/amenities/:amenityId')
+  async updateAmenity(
+    @Param('id') propertyId: string,
+    @Param('amenityId') amenityId: string,
+    @Body() dto: UpdateAmenityDto,
+  ) {
+    return this.propertiesService.updateAmenity(propertyId, amenityId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id/amenities/:amenityId')
+  async removeAmenity(
+    @Param('id') propertyId: string,
+    @Param('amenityId') amenityId: string,
+  ) {
+    return this.propertiesService.removeAmenity(propertyId, amenityId);
   }
 }
