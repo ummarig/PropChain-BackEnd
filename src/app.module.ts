@@ -33,6 +33,7 @@ import { PropertyViewsModule } from './property-views/property-views.module';
 import { PropertyComparisonModule } from './property-comparison/property-comparison.module';
 import { OpenHouseModule } from './open-house/open-house.module';
 import { MortgageCalculatorModule } from './mortgage-calculator/mortgage-calculator.module';
+import { SupportTicketsModule } from './support-tickets/support-tickets.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { MortgageCalculatorModule } from './mortgage-calculator/mortgage-calcula
     // NeighborhoodsModule,
     OpenHouseModule,
     MortgageCalculatorModule,
+    SupportTicketsModule,
   ],
 
   controllers: [AppController],
