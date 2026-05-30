@@ -222,7 +222,7 @@ export class PropertiesService {
           city: rest.city ?? existing.city,
           state: rest.state ?? existing.state,
           zipCode: rest.zipCode ?? existing.zipCode,
-          country: existing.country, // not in UpdatePropertyDto
+          country: rest.country ?? existing.country,
         };
 
         if (this.geocodingService.hasAddressChanged(before, after)) {

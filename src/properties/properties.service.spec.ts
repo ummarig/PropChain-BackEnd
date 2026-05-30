@@ -212,6 +212,41 @@ describe('PropertiesService', () => {
         }),
       });
     });
+
+    it('should re-geocode when country is changed', async () => {
+      const existingProperty = {
+        id: 'prop-123',
+        address: '123 Beach Ave',
+        city: 'Miami',
+        state: 'FL',
+        zipCode: '33101',
+        country: 'USA',
+      } as any;
+
+      mockPrismaService.property.findUnique.mockResolvedValueOnce(existingProperty);
+      mockGeocodingService.hasAddressChanged.mockReturnValueOnce(true);
+      mockGeocodingService.geocodeAddress.mockResolvedValueOnce({
+        latitude: 25.123,
+        longitude: -80.123,
+      });
+
+      await service.update('prop-123', { country: 'US' });
+
+      expect(mockGeocodingService.geocodeAddress).toHaveBeenCalledWith({
+        address: '123 Beach Ave',
+        city: 'Miami',
+        state: 'FL',
+        zipCode: '33101',
+        country: 'US',
+      });
+      expect(prisma.property.update).toHaveBeenCalledWith({
+        where: { id: 'prop-123' },
+        data: expect.objectContaining({
+          latitude: 25.123,
+          longitude: -80.123,
+        }),
+      });
+    });
   });
 
   describe('bulkUpdatePropertyStatus', () => {

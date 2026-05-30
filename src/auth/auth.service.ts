@@ -6,7 +6,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { User as PrismaUser, ApiKey, TokenType } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import * as jwt from 'jsonwebtoken';
@@ -461,6 +460,8 @@ export class AuthService {
       }
     }
 
+    await this.sessionsService.revokeAllSessions(user.sub);
+
     // Find all blacklisted refresh tokens for this user that are still active
     const blacklistedRefreshTokens = await this.prisma.blacklistedToken.findMany({
       where: {
@@ -736,6 +737,8 @@ export class AuthService {
         });
       }
     });
+
+    await this.sessionsService.revokeAllSessions(existingUser.id);
 
     return { message: 'Password updated successfully' };
   }
@@ -1029,7 +1032,13 @@ export class AuthService {
           where: { id: payload.sub },
           data: { lastActivityAt: now },
         })
-        .catch((err) => this.logger.error(`Failed to update lastActivityAt: ${err.message}`));
+        .catch((err: unknown) =>
+          this.logger.error(
+            `Failed to update lastActivityAt: ${
+              err instanceof Error ? err.message : JSON.stringify(err)
+            }`,
+          ),
+        );
     }
 
     return {
@@ -1080,7 +1089,7 @@ export class AuthService {
   }
 
   private async issueTokenPair(
-    user: PrismaUser,
+    user: Prisma.User,
     tokenFamily?: string,
     ipAddress?: string,
     userAgent?: string,
@@ -1344,6 +1353,8 @@ export class AuthService {
         });
       }
     });
+
+    await this.sessionsService.revokeAllSessions(resetToken.userId);
   }
 
   async unlockAccount(email: string) {
