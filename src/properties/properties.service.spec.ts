@@ -4,7 +4,7 @@ import { PropertiesService } from './properties.service';
 import { PrismaService } from '../database/prisma.service';
 import { FraudService } from '../fraud/fraud.service';
 import { CreatePropertyDto } from './dto/property.dto';
-import { PropertyStatus } from '../types/prisma.types';
+import { PropertyStatus, UserRole } from '../types/prisma.types';
 import { GeocodingService } from './geocoding.service';
 
 describe('PropertiesService', () => {
@@ -21,7 +21,7 @@ describe('PropertiesService', () => {
     zipCode: '33101',
     price: new Decimal('450000'),
     propertyType: 'Condo',
-    status: 'DRAFT',
+    status: 'PENDING',
     ownerId: 'user-123',
     hoaName: 'Beachside HOA',
     hoaMonthlyFee: new Decimal('325.5'),
@@ -38,7 +38,9 @@ describe('PropertiesService', () => {
       updateMany: jest.fn(),
       deleteMany: jest.fn(),
       findMany: jest.fn(),
+      count: jest.fn(),
     },
+    $transaction: jest.fn(),
   };
 
   const mockFraudService = {
@@ -56,6 +58,7 @@ describe('PropertiesService', () => {
     mockPrismaService.property.findFirst.mockResolvedValue(null);
     mockPrismaService.property.findUnique.mockResolvedValue(mockProperty);
     mockPrismaService.property.update.mockResolvedValue(mockProperty);
+    mockPrismaService.$transaction.mockResolvedValue([[mockProperty], 1]);
     mockFraudService.evaluatePropertyCreated.mockResolvedValue(null);
     mockGeocodingService.geocodeAddress.mockResolvedValue(null);
     mockGeocodingService.hasAddressChanged.mockReturnValue(false);
@@ -98,7 +101,7 @@ describe('PropertiesService', () => {
 
       expect(result).toBeDefined();
       expect(result.id).toBe('prop-123');
-      expect(result.status).toBe('DRAFT');
+      expect(result.status).toBe('PENDING');
       expect(prisma.property.create).toHaveBeenCalledWith({
         data: {
           title: 'Beautiful Beach Condo',
@@ -114,7 +117,7 @@ describe('PropertiesService', () => {
           hoaContactInfo: 'hoa@example.com',
           squareFeet: null,
           lotSize: null,
-          status: 'DRAFT',
+          status: 'PENDING',
           latitude: undefined,
           longitude: undefined,
           owner: {
@@ -123,6 +126,69 @@ describe('PropertiesService', () => {
         },
       });
       expect(fraudService.evaluatePropertyCreated).toHaveBeenCalledWith('prop-123');
+    });
+  });
+
+  describe('findAll', () => {
+    it('should default to active listings when no filter is provided', async () => {
+      mockPrismaService.property.findMany.mockResolvedValue([mockProperty]);
+
+      await service.findAll();
+
+      expect(prisma.property.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { status: 'ACTIVE' },
+        }),
+      );
+    });
+  });
+
+  describe('searchProperties', () => {
+    it('should only search approved listings by default', async () => {
+      const mockActiveProperty = {
+        id: 'active-1',
+        title: 'Live Listing',
+        status: 'ACTIVE',
+        owner: { id: 'user-abc', firstName: 'Owner', lastName: 'One', email: 'owner@example.com' },
+      };
+
+      mockPrismaService.$transaction.mockResolvedValue([[mockActiveProperty], 1]);
+      mockPrismaService.property.findMany.mockResolvedValue([mockActiveProperty]);
+      mockPrismaService.property.count.mockResolvedValue(1);
+
+      const result = await service.searchProperties({ location: 'Miami' });
+
+      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+      expect(mockPrismaService.property.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ status: 'ACTIVE' }) }),
+      );
+      expect(mockPrismaService.property.count).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ status: 'ACTIVE' }) }),
+      );
+      expect(result.items).toEqual([mockActiveProperty]);
+      expect(result.total).toBe(1);
+    });
+  });
+
+  describe('approveProperty', () => {
+    it('should approve a pending property through the transition workflow', async () => {
+      const transitionSpy = jest.spyOn(service, 'transitionStatus').mockResolvedValue(mockProperty as any);
+
+      const result = await service.approveProperty('prop-123', 'admin-1');
+
+      expect(transitionSpy).toHaveBeenCalledWith('prop-123', PropertyStatus.ACTIVE, 'admin-1', UserRole.ADMIN);
+      expect(result).toBe(mockProperty);
+    });
+  });
+
+  describe('rejectProperty', () => {
+    it('should reject a pending property through the transition workflow', async () => {
+      const transitionSpy = jest.spyOn(service, 'transitionStatus').mockResolvedValue(mockProperty as any);
+
+      const result = await service.rejectProperty('prop-123', 'admin-1');
+
+      expect(transitionSpy).toHaveBeenCalledWith('prop-123', PropertyStatus.ARCHIVED, 'admin-1', UserRole.ADMIN);
+      expect(result).toBe(mockProperty);
     });
   });
 
