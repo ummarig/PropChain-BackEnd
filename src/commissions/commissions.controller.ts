@@ -11,10 +11,7 @@ export class CommissionsController {
   constructor(private readonly commissionsService: CommissionsService) {}
 
   @Get()
-  async findAll(
-    @Query() query: CommissionListQueryDto,
-    @CurrentUser() user: AuthUserPayload,
-  ) {
+  async findAll(@Query() query: CommissionListQueryDto, @CurrentUser() user: AuthUserPayload) {
     return this.commissionsService.findAll(query, user);
   }
 
@@ -24,10 +21,7 @@ export class CommissionsController {
   }
 
   @Get(':id')
-  async findOne(
-    @Param('id') id: string,
-    @CurrentUser() user: AuthUserPayload,
-  ) {
+  async findOne(@Param('id') id: string, @CurrentUser() user: AuthUserPayload) {
     return this.commissionsService.findOne(id, user);
   }
 }

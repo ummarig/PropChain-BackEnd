@@ -11,7 +11,7 @@ export class OpenHouseService {
     return this.prisma.openHouse.create({
       data: {
         propertyId: dto.propertyId,
-        title: dto.title,
+        title: dto.title ?? 'Open House',
         description: dto.description,
         startAt: dto.startAt,
         endAt: dto.endAt,

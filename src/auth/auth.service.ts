@@ -40,6 +40,7 @@ import {
   verifyBackupCode,
   verifyTotpCode,
 } from './security.utils';
+import { validatePassword } from './password.utils';
 import { AuthUserPayload } from './types/auth-user.type';
 import { GoogleProfile } from './strategies/google.strategy';
 
@@ -109,6 +110,13 @@ export class AuthService {
       throw new BadRequestException('A user with that email already exists');
     }
 
+    const passwordErrors = validatePassword(data.password);
+    if (passwordErrors.length > 0) {
+      throw new BadRequestException(
+        `Password does not meet complexity requirements: ${passwordErrors.join('; ')}`,
+      );
+    }
+
     const passwordHash = await hashPassword(data.password, this.bcryptRounds);
     const user = await this.prisma.user.create({
       data: {
@@ -126,6 +134,7 @@ export class AuthService {
     });
 
     const tokens = await this.issueTokenPair(user);
+
     return {
       user: sanitizeUser(user),
       ...tokens,
@@ -671,6 +680,13 @@ export class AuthService {
     );
     if (!currentPasswordMatches) {
       throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const passwordErrors = validatePassword(data.newPassword);
+    if (passwordErrors.length > 0) {
+      throw new BadRequestException(
+        `Password does not meet complexity requirements: ${passwordErrors.join('; ')}`,
+      );
     }
 
     const passwordReused = await Promise.all(
@@ -1268,6 +1284,13 @@ export class AuthService {
     }
 
     const passwordHistoryLimit = getPasswordHistoryLimit();
+
+    const passwordErrors = validatePassword(data.newPassword);
+    if (passwordErrors.length > 0) {
+      throw new BadRequestException(
+        `Password does not meet complexity requirements: ${passwordErrors.join('; ')}`,
+      );
+    }
 
     // Check if new password was used recently
     const recentPasswords = await this.prisma.passwordHistory.findMany({

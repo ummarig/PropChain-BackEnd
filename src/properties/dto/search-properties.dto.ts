@@ -123,6 +123,34 @@ export class SearchPropertiesDto {
   @Max(100)
   limit?: number = 20;
 
+  // ----- Year built (#555) -----
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1800)
+  minYearBuilt?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1800)
+  maxYearBuilt?: number;
+
+  // ----- Neighborhood trust score (#554) -----
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  minNeighborhoodTrustScore?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  maxNeighborhoodTrustScore?: number;
+
   // ----- Sort -----
   @IsOptional()
   @IsIn(PROPERTY_SORT_FIELDS as unknown as string[])
