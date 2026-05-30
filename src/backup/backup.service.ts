@@ -8,12 +8,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  BackupStatus,
-  BackupTrigger,
-  DatabaseBackup,
-  RestoreStatus,
-} from '@prisma/client';
+import { BackupStatus, BackupTrigger, DatabaseBackup, RestoreStatus } from '@prisma/client';
 import { CronJob } from 'cron';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
@@ -337,7 +332,9 @@ export class BackupService implements OnModuleInit {
   }
 
   private getStoragePath() {
-    return this.configService.get<string>('BACKUP_STORAGE_PATH') ?? path.join(process.cwd(), 'backups');
+    return (
+      this.configService.get<string>('BACKUP_STORAGE_PATH') ?? path.join(process.cwd(), 'backups')
+    );
   }
 
   private ensureDatabaseUrl() {

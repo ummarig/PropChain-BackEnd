@@ -113,6 +113,7 @@ export enum FraudPattern {
   RAPID_PROPERTY_LISTINGS = 'RAPID_PROPERTY_LISTINGS',
   DUPLICATE_PROPERTY_ADDRESS = 'DUPLICATE_PROPERTY_ADDRESS',
   HIGH_VALUE_NEW_ACCOUNT_LISTING = 'HIGH_VALUE_NEW_ACCOUNT_LISTING',
+  DUPLICATE_PROPERTY_IMAGES = 'DUPLICATE_PROPERTY_IMAGES',
 }
 
 export enum DisputeStatus {
@@ -126,6 +127,29 @@ export enum MilestoneStatus {
   PENDING = 'PENDING',
   COMPLETED = 'COMPLETED',
   DELAYED = 'DELAYED',
+}
+
+export interface PropertyAgent {
+  id: string;
+  propertyId: string;
+  agentId: string;
+  commissionRate: number;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Commission {
+  id: string;
+  transactionId: string;
+  agentId: string;
+  propertyId: string;
+  amount: number;
+  rate: number;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export namespace Prisma {

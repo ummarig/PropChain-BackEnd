@@ -42,7 +42,9 @@ export class NotificationsService {
 
       // 1. In-App Notification
       const canInApp = await this.userPreferencesService.shouldDeliverNotification(
-        user.id, 'TRANSACTION_UPDATE', 'inApp',
+        user.id,
+        'TRANSACTION_UPDATE',
+        'inApp',
       );
       if (canInApp) {
         await this.sendNotification(user.id, title, message, 'TRANSACTION_UPDATE', {
@@ -53,7 +55,9 @@ export class NotificationsService {
 
       // 2. Email Notification
       const canEmail = await this.userPreferencesService.shouldDeliverNotification(
-        user.id, 'TRANSACTION_UPDATE', 'email',
+        user.id,
+        'TRANSACTION_UPDATE',
+        'email',
       );
       if (canEmail) {
         await this.emailService.sendEmail({
@@ -67,7 +71,9 @@ export class NotificationsService {
 
       // 3. SMS Notification
       const canSms = await this.userPreferencesService.shouldDeliverNotification(
-        user.id, 'TRANSACTION_UPDATE', 'sms',
+        user.id,
+        'TRANSACTION_UPDATE',
+        'sms',
       );
       if (canSms && user.phone) {
         await this.smsService.sendSms(user.phone, message);
@@ -95,7 +101,10 @@ export class NotificationsService {
 
     // 2. Try real-time delivery
     // FCM Push Integration
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { fcmToken: true } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { fcmToken: true },
+    });
     if (user?.fcmToken) {
       console.log(`Sending FCM notification to token: ${user.fcmToken}`);
       // In production, use admin.messaging().send() here

@@ -74,9 +74,7 @@ describe('BackupService', () => {
       createdAt: new Date('2026-04-25T08:00:00.000Z'),
       updatedAt: new Date('2026-04-25T08:05:00.000Z'),
     });
-    mockPrismaService.databaseBackup.count
-      .mockResolvedValueOnce(0)
-      .mockResolvedValueOnce(4);
+    mockPrismaService.databaseBackup.count.mockResolvedValueOnce(0).mockResolvedValueOnce(4);
     mockPrismaService.backupScheduleConfig.findUnique.mockResolvedValue({
       id: 'default',
       enabled: true,

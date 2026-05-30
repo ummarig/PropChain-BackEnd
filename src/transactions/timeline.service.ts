@@ -56,12 +56,12 @@ export class TimelineService {
     });
 
     const total = milestones.length;
-    const completed = milestones.filter(m => m.status === MilestoneStatus.COMPLETED).length;
+    const completed = milestones.filter((m) => m.status === MilestoneStatus.COMPLETED).length;
     const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     // Check for delays
     const now = new Date();
-    const updatedMilestones = milestones.map(m => {
+    const updatedMilestones = milestones.map((m) => {
       const isOverdue = m.status === MilestoneStatus.PENDING && new Date(m.expectedDate) < now;
       return { ...m, isOverdue };
     });

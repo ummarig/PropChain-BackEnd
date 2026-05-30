@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, IsArray, IsIn } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsArray, IsIn, IsUrl } from 'class-validator';
 import { InputType, Field, Float } from '@nestjs/graphql';
 
 export const PROPERTY_STATUS_ENUM = [
@@ -91,6 +91,37 @@ export class CreatePropertyDto {
   @IsOptional()
   @IsNumber()
   longitude?: number;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsUrl()
+  virtualTourUrl?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsUrl()
+  videoUrl?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  hoaName?: string;
+
+  @Field(() => Float, { nullable: true })
+  @IsOptional()
+  @IsNumber()
+  hoaMonthlyFee?: number;
+
+  @Field(() => [String], { nullable: true })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  hoaAmenities?: string[];
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  hoaContactInfo?: string;
 }
 
 import { PropertyStatus } from '../../common/common.types';
@@ -126,6 +157,11 @@ export class UpdatePropertyDto {
   @IsOptional()
   @IsString()
   zipCode?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  country?: string;
 
   @Field(() => Float, { nullable: true })
   @IsOptional()
@@ -182,4 +218,35 @@ export class UpdatePropertyDto {
   @IsOptional()
   @IsNumber()
   longitude?: number;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsUrl()
+  virtualTourUrl?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsUrl()
+  videoUrl?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  hoaName?: string;
+
+  @Field(() => Float, { nullable: true })
+  @IsOptional()
+  @IsNumber()
+  hoaMonthlyFee?: number;
+
+  @Field(() => [String], { nullable: true })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  hoaAmenities?: string[];
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  hoaContactInfo?: string;
 }

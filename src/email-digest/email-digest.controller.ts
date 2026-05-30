@@ -17,10 +17,7 @@ export class EmailDigestController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('preference')
-  updatePreference(
-    @CurrentUser() user: { id: string },
-    @Body() dto: UpdateDigestPreferenceDto,
-  ) {
+  updatePreference(@CurrentUser() user: { id: string }, @Body() dto: UpdateDigestPreferenceDto) {
     return this.emailDigestService.updatePreference(user.id, dto);
   }
 
@@ -30,6 +27,8 @@ export class EmailDigestController {
     const message = success
       ? 'You have been unsubscribed from PropChain email digests.'
       : 'Invalid or expired unsubscribe link.';
-    return res.send(`<html><body style="font-family:Arial;text-align:center;padding:40px"><h2>${message}</h2></body></html>`);
+    return res.send(
+      `<html><body style="font-family:Arial;text-align:center;padding:40px"><h2>${message}</h2></body></html>`,
+    );
   }
 }

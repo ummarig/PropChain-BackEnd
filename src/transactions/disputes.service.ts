@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateDisputeDto, ResolveDisputeDto } from './dto/dispute.dto';
 import { DisputeStatus } from '../types/prisma.types';
@@ -18,7 +23,9 @@ export class DisputesService {
     }
 
     if (transaction.buyerId !== userId && transaction.sellerId !== userId) {
-      throw new ForbiddenException('Only parties involved in the transaction can initiate a dispute');
+      throw new ForbiddenException(
+        'Only parties involved in the transaction can initiate a dispute',
+      );
     }
 
     return this.prisma.dispute.create({

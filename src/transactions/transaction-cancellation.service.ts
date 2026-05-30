@@ -22,12 +22,13 @@ export class TransactionCancellationService {
     });
 
     if (!tx) throw new NotFoundException(`Transaction ${transactionId} not found`);
-    if (tx.status === 'CANCELLED') throw new BadRequestException('Transaction is already cancelled');
-    if (tx.status === 'COMPLETED') throw new BadRequestException('Completed transactions cannot be cancelled');
+    if (tx.status === 'CANCELLED')
+      throw new BadRequestException('Transaction is already cancelled');
+    if (tx.status === 'COMPLETED')
+      throw new BadRequestException('Completed transactions cannot be cancelled');
 
-    const refundAmount = dto.refundAmount !== undefined
-      ? new Decimal(dto.refundAmount.toString())
-      : tx.amount;
+    const refundAmount =
+      dto.refundAmount !== undefined ? new Decimal(dto.refundAmount.toString()) : tx.amount;
 
     const cancelled = await this.prisma.transaction.update({
       where: { id: transactionId },

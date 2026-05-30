@@ -28,10 +28,7 @@ export class EmailDigestService {
     });
   }
 
-  async updatePreference(
-    userId: string,
-    data: { frequency?: DigestFrequency; enabled?: boolean },
-  ) {
+  async updatePreference(userId: string, data: { frequency?: DigestFrequency; enabled?: boolean }) {
     return this.prisma.digestPreference.upsert({
       where: { userId },
       update: data,

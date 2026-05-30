@@ -1,11 +1,4 @@
-import {
-  IsArray,
-  IsBoolean,
-  IsEnum,
-  IsOptional,
-  IsString,
-  IsUrl,
-} from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, IsUrl } from 'class-validator';
 
 export enum WebhookEventType {
   PROPERTY_CREATED = 'PROPERTY_CREATED',

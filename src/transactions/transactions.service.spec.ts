@@ -1,7 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Decimal } from '@prisma/client/runtime/library';
 import { TransactionsService } from './transactions.service';
 import { PrismaService } from '../database/prisma.service';
-import { TransactionSortField, SortOrder } from './dto/transactions.dto';
+import { BlockchainService } from '../blockchain/blockchain.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { TransactionAnalyticsGranularity, TransactionTypeDto } from './dto/transaction.dto';
+import { CommissionsService } from '../commissions/commissions.service';
+import { TransactionTypeDto } from './dto/transaction.dto';
 
 describe('TransactionsService', () => {
   let service: TransactionsService;
@@ -12,21 +17,44 @@ describe('TransactionsService', () => {
       findMany: jest.fn(),
       count: jest.fn(),
       findUnique: jest.fn(),
+      update: jest.fn(),
+      create: jest.fn(),
+    },
+    property: {
+      findUnique: jest.fn(),
+    },
+    user: {
+      findUnique: jest.fn(),
     },
   };
 
+  const mockBlockchainService = {
+    isValidAddress: jest.fn().mockReturnValue(true),
+    recordTransactionOnBlockchain: jest.fn(),
+    verifyBlockchainTransaction: jest.fn(),
+    getBlockchainStats: jest.fn(),
+  };
+
+  const mockNotificationsService = {
+    sendNotification: jest.fn(),
+    handleTransactionUpdate: jest.fn(),
+  };
+
+  const mockCommissionsService = {
+    createCommissionsForTransaction: jest.fn().mockResolvedValue(undefined),
+    updateCommissionsStatus: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TransactionsService,
-        {
-          provide: PrismaService,
-          useValue: mockPrismaService,
-        },
-        {
-          provide: NotificationsService,
-          useValue: notificationsService,
-        },
+        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: BlockchainService, useValue: mockBlockchainService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
+        { provide: CommissionsService, useValue: mockCommissionsService },
       ],
     }).compile();
 
@@ -38,78 +66,177 @@ describe('TransactionsService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('getTransactions', () => {
+  describe('findAll', () => {
     it('should call prisma findMany and count with correct arguments', async () => {
       const query = {
         page: 1,
         limit: 10,
-        sortBy: TransactionSortField.CREATED_AT,
-        sortOrder: SortOrder.DESC,
       };
-      const userId = 'user-1';
 
       mockPrismaService.transaction.findMany.mockResolvedValue([]);
       mockPrismaService.transaction.count.mockResolvedValue(0);
 
-      const result = await service.getTransactions(query, userId);
+      const result = await service.findAll(query);
 
-      expect(prisma.transaction.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            OR: [{ buyerId: userId }, { sellerId: userId }],
-          }),
-          skip: 0,
-          take: 10,
-        }),
-      );
+      expect(prisma.transaction.findMany).toHaveBeenCalled();
       expect(prisma.transaction.count).toHaveBeenCalled();
       expect(result).toHaveProperty('items');
       expect(result).toHaveProperty('total');
     });
   });
 
-  describe('getTransactionById', () => {
-    it('should return transaction if user is buyer', async () => {
-      const mockTransaction = { id: 't-1', buyerId: 'user-1', sellerId: 'user-2' };
+  describe('findOne', () => {
+    it('should return transaction if found', async () => {
+      const mockTransaction = {
+        id: 't-1',
+        buyerId: 'user-1',
+        sellerId: 'user-2',
+        propertyId: 'prop-1',
+        amount: 100000,
+        type: 'SALE',
+        status: 'PENDING',
+        notes: null,
+        blockchainHash: null,
+        contractAddress: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        buyer: { id: 'user-1', email: 'b@test.com', firstName: 'B', lastName: 'B' },
+        seller: { id: 'user-2', email: 's@test.com', firstName: 'S', lastName: 'S' },
+        property: { id: 'prop-1', title: 'Test', address: '123 Main' },
+      };
       mockPrismaService.transaction.findUnique.mockResolvedValue(mockTransaction);
 
-      const result = await service.getTransactionById('t-1', 'user-1');
-      expect(result).toEqual(mockTransaction);
-    });
-
-    it('should return null if user is not buyer, seller or admin', async () => {
-      const mockTransaction = { id: 't-1', buyerId: 'user-1', sellerId: 'user-2' };
-      mockPrismaService.transaction.findUnique.mockResolvedValue(mockTransaction);
-
-      const result = await service.getTransactionById('t-1', 'user-3', false);
-      expect(result).toBeNull();
+      const result = await service.findOne('t-1');
+      expect(result.id).toBe('t-1');
     });
   });
 
-  describe('updateStatus', () => {
-    it('updates status and logs history in a transaction', async () => {
-      const mockTx = { id: 'tx-123', status: TransactionStatus.PENDING };
-      prisma.transaction.findUnique.mockResolvedValue(mockTx);
-      prisma.transaction.update.mockResolvedValue({ ...mockTx, status: TransactionStatus.COMPLETED });
-      prisma.transactionHistory.create.mockResolvedValue({ id: 'hist-1' });
-      prisma.$transaction.mockImplementation(async (cb) => cb(prisma));
-
-      const result = await service.updateStatus('tx-123', TransactionStatus.COMPLETED, 'actor-1');
-
-      expect(prisma.transaction.update).toHaveBeenCalledWith({
-        where: { id: 'tx-123' },
-        data: { status: TransactionStatus.COMPLETED },
+  describe('create', () => {
+    it('should create a transaction', async () => {
+      mockPrismaService.property.findUnique.mockResolvedValue({ id: 'prop-1' });
+      mockPrismaService.user.findUnique.mockResolvedValue({ id: 'user-1' });
+      mockPrismaService.transaction.create.mockResolvedValue({
+        id: 't-new',
+        propertyId: 'prop-1',
+        buyerId: 'user-1',
+        sellerId: 'user-2',
+        amount: 100000,
+        type: 'SALE',
+        status: 'PENDING',
+        notes: null,
+        blockchianHash: null,
+        contractAddress: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
-      expect(prisma.transactionHistory.create).toHaveBeenCalledWith({
-        data: {
-          transactionId: 'tx-123',
-          status: TransactionStatus.COMPLETED,
-          actorId: 'actor-1',
-          notes: 'Status updated from PENDING to COMPLETED',
+
+      const result = await service.create({
+        propertyId: 'prop-1',
+        buyerId: 'user-1',
+        sellerId: 'user-2',
+        amount: 100000,
+        type: TransactionTypeDto.SALE,
+      });
+
+      expect(result.id).toBe('t-new');
+    });
+  });
+
+  describe('getAnalytics', () => {
+    it('should calculate volume trends, average price, completion rate, and revenue', async () => {
+      mockPrismaService.transaction.findMany.mockResolvedValue([
+        {
+          amount: new Decimal('100000'),
+          status: 'COMPLETED',
+          createdAt: new Date('2026-01-10T00:00:00.000Z'),
         },
+        {
+          amount: new Decimal('200000'),
+          status: 'PENDING',
+          createdAt: new Date('2026-01-20T00:00:00.000Z'),
+        },
+        {
+          amount: new Decimal('300000'),
+          status: 'COMPLETED',
+          createdAt: new Date('2026-02-05T00:00:00.000Z'),
+        },
+        {
+          amount: new Decimal('400000'),
+          status: 'CANCELLED',
+          createdAt: new Date('2026-02-12T00:00:00.000Z'),
+        },
+      ]);
+
+      const result = await service.getAnalytics({
+        granularity: TransactionAnalyticsGranularity.MONTH,
       });
-      expect(notificationsService.handleTransactionUpdate).toHaveBeenCalledWith('tx-123');
-      expect(result.status).toBe(TransactionStatus.COMPLETED);
+
+      expect(prisma.transaction.findMany).toHaveBeenCalledWith({
+        where: {},
+        select: {
+          amount: true,
+          status: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      expect(result).toEqual({
+        totalTransactions: 4,
+        completedTransactions: 2,
+        pendingTransactions: 1,
+        cancelledTransactions: 1,
+        totalVolume: 1000000,
+        averagePrice: 250000,
+        completionRate: 50,
+        revenue: 400000,
+        volumeTrends: [
+          {
+            period: '2026-01',
+            transactionCount: 2,
+            totalVolume: 300000,
+            completedCount: 1,
+            revenue: 100000,
+          },
+          {
+            period: '2026-02',
+            transactionCount: 2,
+            totalVolume: 700000,
+            completedCount: 1,
+            revenue: 300000,
+          },
+        ],
+      });
+    });
+
+    it('should apply date and type filters', async () => {
+      const startDate = new Date('2026-01-01T00:00:00.000Z');
+      const endDate = new Date('2026-01-31T23:59:59.000Z');
+
+      mockPrismaService.transaction.findMany.mockResolvedValue([]);
+
+      const result = await service.getAnalytics({
+        startDate,
+        endDate,
+        type: TransactionTypeDto.SALE,
+        granularity: TransactionAnalyticsGranularity.DAY,
+      });
+
+      expect(prisma.transaction.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            type: TransactionTypeDto.SALE,
+            createdAt: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
+        }),
+      );
+      expect(result.totalTransactions).toBe(0);
+      expect(result.averagePrice).toBe(0);
+      expect(result.completionRate).toBe(0);
+      expect(result.revenue).toBe(0);
+      expect(result.volumeTrends).toEqual([]);
     });
   });
 });

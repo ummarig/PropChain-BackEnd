@@ -96,6 +96,7 @@ enum FraudPattern {
   RAPID_PROPERTY_LISTINGS
   DUPLICATE_PROPERTY_ADDRESS
   HIGH_VALUE_NEW_ACCOUNT_LISTING
+  DUPLICATE_PROPERTY_IMAGES
 }
 
 enum BackupStatus {
@@ -188,6 +189,8 @@ model User {
 
   // Relations
   properties              Property[]
+  propertyAgents          PropertyAgent[]
+  commissions             Commission[]
   buyerTransactions       Transaction[]            @relation("BuyerTransactions")
   sellerTransactions      Transaction[]            @relation("SellerTransactions")
   cancelledTransactions   Transaction[]            @relation("CancelledTransactions")
@@ -197,6 +200,7 @@ model User {
   blacklistedTokens       BlacklistedToken[]
   preferences             UserPreferences?
   activityLogs            ActivityLog[]
+  documentVersions        DocumentVersion[] @relation("DocumentVersionUploader")
   verificationDocuments   VerificationDocument[]
   sessions                Session[]
   passwordResetTokens     PasswordResetToken[]
@@ -223,7 +227,8 @@ model User {
   digestPreference        DigestPreference?
   createdTaxStrategies       TransactionTaxStrategy[] @relation("CreatedTransactionTaxStrategies")
   transactionHistory         TransactionHistory[]
-  uploadedDocumentVersions   DocumentVersion[]        @relation("DocumentVersionUploader")
+  favorites                  PropertyFavorite[]
+  propertyViews              PropertyView[]
 
   @@index([email])
   @@index([role])
@@ -394,24 +399,177 @@ model Property {
   yearBuilt    Int?           @map("year_built")
   status       PropertyStatus @default(DRAFT)
   ownerId      String         @map("owner_id")
+  neighborhoodId String?      @map("neighborhood_id")
   latitude     Float?
   longitude    Float?
-  features     String[] // Array of features (pool, garage, etc.)
-  createdAt    DateTime       @default(now()) @map("created_at")
-  updatedAt    DateTime       @updatedAt @map("updated_at")
+  features        String[] // Array of features (pool, garage, etc.)
+  virtualTourUrl  String?        @map("virtual_tour_url")
+  videoUrl        String?        @map("video_url")
+  hoaName         String?        @map("hoa_name")
+  hoaMonthlyFee   Decimal?       @map("hoa_monthly_fee")
+  hoaAmenities    String[]       @default([]) @map("hoa_amenities")
+  hoaContactInfo  String?        @map("hoa_contact_info")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  viewCount    Int            @default(0) @map("view_count")
+
+    // Property Tax Information
+    annualTaxAmount   Decimal?       @map("annual_tax_amount") // Annual property tax amount
+    taxAssessmentValue Decimal?      @map("tax_assessment_value") // Assessed value for tax purposes
+    taxRate           Decimal?       @map("tax_rate") // Tax rate applied to property
+    taxHistory        Json?          @map("tax_history") // Historical tax records (array of objects)
+
+      // Investment Analysis Metrics
+      capRate          Decimal?       @map("cap_rate") // Capitalization rate
+      roi              Decimal?       @map("roi") // Return on investment
+      rentalYield      Decimal?       @map("rental_yield") // Rental yield percentage
+      cashFlow         Decimal?       @map("cash_flow") // Annual cash flow
 
   // Relations
-  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner        User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   documents    Document[]
+  images       PropertyImage[]
   fraudAlerts  FraudAlert[]
+  agents       PropertyAgent[]
+  commissions  Commission[]
+  duplicates   PropertyDuplicate[] @relation("DuplicateProperty")
+  duplicateOf  PropertyDuplicate[] @relation("DuplicateTarget")
+  mergedInto   PropertyDuplicate[] @relation("MergedProperty")
+  favorites    PropertyFavorite[]
+  views        PropertyView[]
+  neighborhood Neighborhood?      @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
 
   @@index([ownerId])
   @@index([status])
   @@index([city, state])
   @@index([price])
   @@index([propertyType])
+  @@index([viewCount])
+  @@index([neighborhoodId])
   @@map("properties")
+}
+
+// Property gallery image with optimized variants and ordering (#TASK2)
+model PropertyImage {
+  id           String   @id @default(uuid())
+  propertyId   String   @map("property_id")
+  url          String   // optimized full-size variant
+  thumbnailUrl String   @map("thumbnail_url")
+  mediumUrl    String   @map("medium_url")
+  filename     String
+  mimeType     String   @map("mime_type")
+  size         Int      // bytes (optimized full-size)
+  width        Int?
+  height       Int?
+  order        Int      @default(0)
+  isPrimary    Boolean  @default(false) @map("is_primary")
+  uniqueHash   String?  @map("unique_hash") // Perceptual hash for duplicate detection
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, order])
+  @@index([propertyId, isPrimary])
+  @@index([uniqueHash])
+  @@map("property_images")
+}
+
+model PropertyFavorite {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  propertyId String   @map("property_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@index([userId, createdAt])
+  @@index([propertyId])
+  @@map("property_favorites")
+}
+
+model PropertyView {
+  id         String   @id @default(uuid())
+  propertyId String   @map("property_id")
+  userId     String?  @map("user_id")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  referrer   String?
+  sessionId  String?  @map("session_id")
+  viewedAt   DateTime @default(now()) @map("viewed_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId, viewedAt])
+  @@index([userId])
+  @@index([ipAddress])
+  @@map("property_views")
+}
+
+model Neighborhood {
+  id           String   @id @default(uuid())
+  name         String
+  city         String
+  state        String
+  country      String   @default("USA")
+  walkScore    Int?     @map("walk_score")
+  transitScore Int?     @map("transit_score")
+  bikeScore    Int?     @map("bike_score")
+  crimeIndex   Float?   @map("crime_index")
+  crimeRate    Json?    @map("crime_rate")
+  schoolRating Float?   @map("school_rating")
+  description  String?
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  properties Property[]
+  schools    NeighborhoodSchool[]
+  amenities  NeighborhoodAmenity[]
+
+  @@unique([name, city, state])
+  @@index([city, state])
+  @@map("neighborhoods")
+}
+
+model NeighborhoodSchool {
+  id                  String   @id @default(uuid())
+  neighborhoodId      String   @map("neighborhood_id")
+  name                String
+  type                String
+  rating              Float
+  distanceMiles       Float?   @map("distance_miles")
+  studentTeacherRatio Float?   @map("student_teacher_ratio")
+  enrollmentCount     Int?     @map("enrollment_count")
+  url                 String?
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId])
+  @@index([type])
+  @@map("neighborhood_schools")
+}
+
+model NeighborhoodAmenity {
+  id             String   @id @default(uuid())
+  neighborhoodId String   @map("neighborhood_id")
+  category       String
+  name           String
+  distanceMiles  Float?   @map("distance_miles")
+  rating         Float?
+  address        String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+
+  @@index([neighborhoodId])
+  @@index([category])
+  @@map("neighborhood_amenities")
 }
 
 // Transaction model
@@ -437,6 +595,7 @@ model Transaction {
 
   // Relations
   property              Property                 @relation(fields: [propertyId], references: [id])
+  commissions           Commission[]
   buyer                 User                     @relation("BuyerTransactions", fields: [buyerId], references: [id])
   seller                User                     @relation("SellerTransactions", fields: [sellerId], references: [id])
   cancelledBy           User?                    @relation("CancelledTransactions", fields: [cancelledById], references: [id])
@@ -507,9 +666,9 @@ model Document {
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
   // Relations
-  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dispute  Dispute?  @relation(fields: [disputeId], references: [id], onDelete: SetNull)
+  property Property?       @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dispute  Dispute?        @relation(fields: [disputeId], references: [id], onDelete: SetNull)
   versions DocumentVersion[]
 
   @@index([propertyId])
@@ -941,4 +1100,64 @@ model DigestPreference {
   @@index([userId])
   @@index([enabled, frequency])
   @@map("digest_preferences")
+}
+
+model PropertyAgent {
+  id             String   @id @default(uuid())
+  propertyId     String   @map("property_id")
+  agentId        String   @map("agent_id")
+  commissionRate Decimal  @default(0.03) @map("commission_rate")
+  contactPhone   String?  @map("contact_phone")
+  contactEmail   String?  @map("contact_email")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  agent    User     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([propertyId, agentId])
+  @@map("property_agents")
+}
+
+model Commission {
+  id            String            @id @default(uuid())
+  transactionId String            @map("transaction_id")
+  agentId       String            @map("agent_id")
+  propertyId    String            @map("property_id")
+  amount        Decimal           @map("amount")
+  rate          Decimal           @map("rate")
+  status        TransactionStatus @default(PENDING)
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  agent       User        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  property    Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([transactionId, agentId])
+  @@map("commissions")
+}
+
+// Property duplicate detection results
+model PropertyDuplicate {
+  id              String   @id @default(uuid())
+  propertyId      String   @map("property_id")
+  duplicateOfId   String?  @map("duplicate_of_id") // null if unknown match
+  duplicateType    String   @map("duplicate_type") // ADDRESS, IMAGE, ADDRESS_AND_IMAGE
+  confidenceScore Int      @default(0) @map("confidence_score") // 0-100
+  evidence        Json?    @map("evidence") // match details
+  isMerged        Boolean  @default(false) @map("is_merged")
+  mergedIntoId    String?  @map("merged_into_id") // points to surviving property after merge
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  property    Property @relation("DuplicateProperty", fields: [propertyId], references: [id], onDelete: Cascade)
+  duplicateOf Property? @relation("DuplicateTarget", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  mergedInto  Property? @relation("MergedProperty", fields: [mergedIntoId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId])
+  @@index([duplicateOfId])
+  @@index([duplicateType])
+  @@index([isMerged])
+  @@map("property_duplicates")
 }

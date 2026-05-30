@@ -11,9 +11,9 @@ describe('TransactionFeesService', () => {
     const result = service.calculateFees(100_000);
 
     expect(result.transactionAmount).toBe(100_000);
-    expect(result.platformFee).toBe(1_500);       // 1.5%
+    expect(result.platformFee).toBe(1_500); // 1.5%
     expect(result.platformFeeRate).toBe(0.015);
-    expect(result.agentCommission).toBe(3_000);   // 3%
+    expect(result.agentCommission).toBe(3_000); // 3%
     expect(result.agentCommissionRate).toBe(0.03);
     // tax = (100000 + 1500 + 3000) * 0.08 = 8360
     expect(result.tax).toBe(8_360);
@@ -42,7 +42,7 @@ describe('TransactionFeesService', () => {
   it('rounds to 2 decimal places', () => {
     const result = service.calculateFees(333.33);
 
-    expect(result.platformFee).toBe(5);           // 333.33 * 0.015 = 4.99995 → 5
+    expect(result.platformFee).toBe(5); // 333.33 * 0.015 = 4.99995 → 5
     expect(Number.isInteger(result.platformFee * 100)).toBe(true);
   });
 });

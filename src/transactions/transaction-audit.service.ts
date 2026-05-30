@@ -18,29 +18,29 @@ export class TransactionAuditService {
     newData: object | null,
     ctx: AuditContext = {},
   ) {
-    return this.prisma.transactionAuditLog.create({
+    return this.prisma.transactionHistory.create({
       data: {
         transactionId,
-        action,
-        previousData: previousData ?? undefined,
-        newData: newData ?? undefined,
+        status: action as any,
         actorId: ctx.actorId,
-        ipAddress: ctx.ipAddress,
-        userAgent: ctx.userAgent,
+        notes: JSON.stringify({ previousData, newData }),
+        metadata: {
+          ipAddress: ctx.ipAddress,
+          userAgent: ctx.userAgent,
+        },
       },
     });
   }
 
   async findByTransaction(transactionId: string) {
-    return this.prisma.transactionAuditLog.findMany({
+    return this.prisma.transactionHistory.findMany({
       where: { transactionId },
       orderBy: { createdAt: 'asc' },
       select: {
         id: true,
-        action: true,
-        previousData: true,
-        newData: true,
-        ipAddress: true,
+        status: true,
+        notes: true,
+        metadata: true,
         createdAt: true,
         actor: {
           select: { id: true, firstName: true, lastName: true, email: true },

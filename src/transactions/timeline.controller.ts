@@ -14,20 +14,14 @@ export class TimelineController {
   @Post(':id/timeline')
   @ApiOperation({ summary: 'Add a milestone to the transaction timeline' })
   @ApiResponse({ status: 201, description: 'Milestone added successfully' })
-  addMilestone(
-    @Param('id') id: string,
-    @Body() dto: CreateMilestoneDto,
-  ) {
+  addMilestone(@Param('id') id: string, @Body() dto: CreateMilestoneDto) {
     return this.timelineService.addMilestone(id, dto);
   }
 
   @Patch('timeline/:milestoneId')
   @ApiOperation({ summary: 'Update a milestone status or date' })
   @ApiResponse({ status: 200, description: 'Milestone updated successfully' })
-  updateMilestone(
-    @Param('milestoneId') milestoneId: string,
-    @Body() dto: UpdateMilestoneDto,
-  ) {
+  updateMilestone(@Param('milestoneId') milestoneId: string, @Body() dto: UpdateMilestoneDto) {
     return this.timelineService.updateMilestone(milestoneId, dto);
   }
 

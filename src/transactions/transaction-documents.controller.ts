@@ -28,19 +28,13 @@ export class TransactionDocumentsController {
 
   /** GET /transactions/:transactionId/documents/:documentId — view a document */
   @Get(':documentId')
-  findOne(
-    @Param('transactionId') transactionId: string,
-    @Param('documentId') documentId: string,
-  ) {
+  findOne(@Param('transactionId') transactionId: string, @Param('documentId') documentId: string) {
     return this.service.findOne(transactionId, documentId);
   }
 
   /** DELETE /transactions/:transactionId/documents/:documentId — remove a document */
   @Delete(':documentId')
-  remove(
-    @Param('transactionId') transactionId: string,
-    @Param('documentId') documentId: string,
-  ) {
+  remove(@Param('transactionId') transactionId: string, @Param('documentId') documentId: string) {
     return this.service.remove(transactionId, documentId);
   }
 

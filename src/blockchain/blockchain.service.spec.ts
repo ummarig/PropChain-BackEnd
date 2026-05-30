@@ -59,6 +59,7 @@ describe('BlockchainService', () => {
         buyerAddress: '0xBuyer',
         sellerAddress: '0xSeller',
         amount: 1000,
+        timestamp: 1716812345678,
       };
 
       const hash1 = service.generateBlockchainHash(data);
@@ -247,9 +248,7 @@ describe('BlockchainService', () => {
     it('should reject invalid addresses', () => {
       expect(service.isValidAddress('invalid')).toBe(false);
       expect(service.isValidAddress('0x123')).toBe(false);
-      expect(service.isValidAddress('0xGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG')).toBe(
-        false,
-      );
+      expect(service.isValidAddress('0xGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG')).toBe(false);
     });
   });
 

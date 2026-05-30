@@ -113,7 +113,7 @@ export class EmailService {
 
   async sendEmail(options: EmailOptions): Promise<void> {
     const baseUrl = this.configService.get<string>('API_URL', 'http://localhost:3000/api');
-    let html = options.html;
+    const html = options.html;
 
     // 1. Check if user is blocked or has invalid email
     if (options.userId) {
@@ -147,22 +147,26 @@ export class EmailService {
 
     // 3. Add to Queue
     try {
-      await this.mailQueue.add('sendEmail', {
-        to: options.to,
-        subject: options.subject,
-        template: options.template,
-        context: options.context,
-        html: options.html,
-        text: options.text,
-      }, {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 5000,
+      await this.mailQueue.add(
+        'sendEmail',
+        {
+          to: options.to,
+          subject: options.subject,
+          template: options.template,
+          context: options.context,
+          html: options.html,
+          text: options.text,
         },
-        removeOnComplete: true,
-        removeOnFail: false,
-      });
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 5000,
+          },
+          removeOnComplete: true,
+          removeOnFail: false,
+        },
+      );
 
       this.logger.log(`📧 Email to ${options.to} queued for subject: ${options.subject}`);
     } catch (error) {

@@ -1,7 +1,9 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../src/database/prisma.service';
+import { BlockchainService } from '../../src/blockchain/blockchain.service';
 import { NotificationsService } from '../../src/notifications/notifications.service';
+import { CommissionsService } from '../../src/commissions/commissions.service';
 import { TransactionStatus, TransactionType, UserRole } from '../../src/types/prisma.types';
 import { TransactionsService } from '../../src/transactions/transactions.service';
 
@@ -33,9 +35,21 @@ describe('TransactionsService', () => {
     $transaction: jest.fn().mockImplementation(async (cb) => cb(mockPrismaService)),
   } as any;
 
+  const mockBlockchainService = {
+    isValidAddress: jest.fn().mockReturnValue(true),
+    recordTransactionOnBlockchain: jest.fn(),
+    verifyBlockchainTransaction: jest.fn(),
+    getBlockchainStats: jest.fn(),
+  };
+
   const mockNotificationsService = {
     sendNotification: jest.fn(),
     handleTransactionUpdate: jest.fn(),
+  };
+
+  const mockCommissionsService = {
+    createCommissionsForTransaction: jest.fn().mockResolvedValue(undefined),
+    updateCommissionsStatus: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -43,7 +57,9 @@ describe('TransactionsService', () => {
       providers: [
         TransactionsService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: BlockchainService, useValue: mockBlockchainService },
         { provide: NotificationsService, useValue: mockNotificationsService },
+        { provide: CommissionsService, useValue: mockCommissionsService },
       ],
     }).compile();
 
@@ -52,6 +68,9 @@ describe('TransactionsService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    mockPrismaService.transaction.findUnique.mockReset();
+    mockPrismaService.transaction.update.mockReset();
+    mockPrismaService.transaction.create.mockReset();
   });
 
   it('creates a transaction linked to property, buyer, seller, and amount', async () => {
@@ -187,14 +206,12 @@ describe('TransactionsService', () => {
       }),
       include: expect.any(Object),
     });
-    mockPrismaService.user.findUnique
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        id: 'seller-1',
-        firstName: 'Seller',
-        lastName: 'One',
-        email: 'seller@example.com',
-      });
+    mockPrismaService.user.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: 'seller-1',
+      firstName: 'Seller',
+      lastName: 'One',
+      email: 'seller@example.com',
+    });
 
     await expect(
       service.createTransaction(
@@ -215,7 +232,7 @@ describe('TransactionsService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('rejects invalid seller references', async () => {
+  it('rejects invalid seller references (duplicate validation)', async () => {
     mockPrismaService.property.findUnique.mockResolvedValue({
       id: 'property-1',
       title: 'Property',
@@ -292,14 +309,12 @@ describe('TransactionsService', () => {
       address: '123 Main St',
       ownerId: 'seller-1',
     });
-    mockPrismaService.user.findUnique
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        id: 'seller-1',
-        firstName: 'Seller',
-        lastName: 'One',
-        email: 'seller@example.com',
-      });
+    mockPrismaService.user.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: 'seller-1',
+      firstName: 'Seller',
+      lastName: 'One',
+      email: 'seller@example.com',
+    });
 
     await expect(
       service.createTransaction(

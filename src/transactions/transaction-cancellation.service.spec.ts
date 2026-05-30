@@ -35,17 +35,23 @@ describe('TransactionCancellationService', () => {
   describe('cancel', () => {
     it('throws NotFoundException when transaction does not exist', async () => {
       mockPrisma.transaction.findUnique.mockResolvedValue(null);
-      await expect(service.cancel('bad-id', { reason: 'test' }, 'user-1')).rejects.toThrow(NotFoundException);
+      await expect(service.cancel('bad-id', { reason: 'test' }, 'user-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws BadRequestException when already cancelled', async () => {
       mockPrisma.transaction.findUnique.mockResolvedValue({ ...mockTx, status: 'CANCELLED' });
-      await expect(service.cancel('tx-1', { reason: 'test' }, 'user-1')).rejects.toThrow(BadRequestException);
+      await expect(service.cancel('tx-1', { reason: 'test' }, 'user-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('throws BadRequestException when completed', async () => {
       mockPrisma.transaction.findUnique.mockResolvedValue({ ...mockTx, status: 'COMPLETED' });
-      await expect(service.cancel('tx-1', { reason: 'test' }, 'user-1')).rejects.toThrow(BadRequestException);
+      await expect(service.cancel('tx-1', { reason: 'test' }, 'user-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('cancels transaction and sends notifications to buyer and seller', async () => {
@@ -75,7 +81,9 @@ describe('TransactionCancellationService', () => {
 
       expect(mockPrisma.transaction.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ refundAmount: expect.objectContaining({ toString: expect.any(Function) }) }),
+          data: expect.objectContaining({
+            refundAmount: expect.objectContaining({ toString: expect.any(Function) }),
+          }),
         }),
       );
     });
@@ -95,7 +103,10 @@ describe('TransactionCancellationService', () => {
     it('marks refund as processed and notifies buyer', async () => {
       const cancelledTx = { ...mockTx, status: 'CANCELLED', refundStatus: 'PENDING' };
       mockPrisma.transaction.findUnique.mockResolvedValue(cancelledTx);
-      mockPrisma.transaction.update.mockResolvedValue({ ...cancelledTx, refundStatus: 'PROCESSED' });
+      mockPrisma.transaction.update.mockResolvedValue({
+        ...cancelledTx,
+        refundStatus: 'PROCESSED',
+      });
 
       const result = await service.processRefund('tx-1');
 

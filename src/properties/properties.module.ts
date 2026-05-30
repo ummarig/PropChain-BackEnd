@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { PropertiesService } from './properties.service';
 import { PropertiesController } from './properties.controller';
+import { PropertyImagesService } from './property-images.service';
+import { PropertyImagesController } from './property-images.controller';
+import { GeocodingService } from './geocoding.service';
 import { PrismaModule } from '../database/prisma.module';
 import { AuthModule } from '../auth/auth.module';
 import { PropertiesResolver } from './properties.resolver';
@@ -9,10 +13,12 @@ import { FraudModule } from '../fraud/fraud.module';
 import { PropertyReportService } from './report/property-report.service';
 
 @Module({
-  imports: [PrismaModule, AuthModule, FraudModule],
-  controllers: [PropertiesController],
+  imports: [PrismaModule, AuthModule, FraudModule, ConfigModule],
+  controllers: [PropertiesController, PropertyImagesController],
   providers: [
     PropertiesService,
+    PropertyImagesService,
+    GeocodingService,
     PropertiesResolver,
     PropertyReportService,
     {
@@ -20,6 +26,6 @@ import { PropertyReportService } from './report/property-report.service';
       useValue: new PubSub(),
     },
   ],
-  exports: [PropertiesService, PropertyReportService],
+  exports: [PropertiesService, PropertyReportService, PropertyImagesService, GeocodingService],
 })
 export class PropertiesModule {}

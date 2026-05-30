@@ -32,7 +32,17 @@ describe('TransactionDocumentsService', () => {
     it('throws NotFoundException when transaction does not exist', async () => {
       mockPrisma.transaction.findUnique.mockResolvedValue(null);
       await expect(
-        service.attach('bad-tx', { documentType: 'CONTRACT', fileName: 'f.pdf', fileUrl: 'url', fileSize: 100, mimeType: 'application/pdf' }, 'user-1'),
+        service.attach(
+          'bad-tx',
+          {
+            documentType: 'CONTRACT',
+            fileName: 'f.pdf',
+            fileUrl: 'url',
+            fileSize: 100,
+            mimeType: 'application/pdf',
+          },
+          'user-1',
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -43,7 +53,14 @@ describe('TransactionDocumentsService', () => {
 
       const result = await service.attach(
         'tx-1',
-        { documentType: 'CONTRACT', fileName: 'contract.pdf', fileUrl: 'http://url', fileSize: 1024, mimeType: 'application/pdf', changeNote: 'Initial' },
+        {
+          documentType: 'CONTRACT',
+          fileName: 'contract.pdf',
+          fileUrl: 'http://url',
+          fileSize: 1024,
+          mimeType: 'application/pdf',
+          changeNote: 'Initial',
+        },
         'user-1',
       );
 
@@ -64,7 +81,12 @@ describe('TransactionDocumentsService', () => {
       const newVersion = { versionNumber: 2 };
       mockPrisma.$transaction.mockResolvedValue([newVersion, {}]);
 
-      const result = await service.addVersion('tx-1', 'doc-1', { fileUrl: 'url2', fileName: 'v2.pdf', fileSize: 2048 }, 'user-1');
+      const result = await service.addVersion(
+        'tx-1',
+        'doc-1',
+        { fileUrl: 'url2', fileName: 'v2.pdf', fileSize: 2048 },
+        'user-1',
+      );
 
       expect(mockPrisma.$transaction).toHaveBeenCalledWith(
         expect.arrayContaining([expect.anything(), expect.anything()]),

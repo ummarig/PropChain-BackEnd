@@ -44,7 +44,10 @@ export class BlockchainService {
   private contract: any;
   private transactionCache = new Map<string, BlockchainTransaction>();
 
-  constructor(private configService: ConfigService, private prisma: PrismaService) {
+  constructor(
+    private configService: ConfigService,
+    private prisma: PrismaService,
+  ) {
     this.initializeConfig();
   }
 
@@ -336,11 +339,11 @@ export class BlockchainService {
         },
       });
 
-      const confirmed = transactions.filter((t) => t.status === 'COMPLETED');
-      const pending = transactions.filter((t) => t.status === 'PENDING');
-      const failed = transactions.filter((t) => t.status === 'FAILED');
+      const confirmed = transactions.filter((t) => t.status === ('COMPLETED' as any));
+      const pending = transactions.filter((t) => t.status === ('PENDING' as any));
+      const failed = transactions.filter((t) => t.status === ('FAILED' as any));
 
-      const totalValue = confirmed.reduce((sum, t) => sum + t.amount.toNumber(), 0);
+      const totalValue = confirmed.reduce((sum: number, t: any) => sum + t.amount.toNumber(), 0);
 
       return {
         totalTransactions: transactions.length,

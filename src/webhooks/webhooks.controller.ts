@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { WebhooksService } from './webhooks.service';
 import { CreateWebhookDto, UpdateWebhookDto } from './webhook.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -34,11 +25,7 @@ export class WebhooksController {
   }
 
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @CurrentUser() user: any,
-    @Body() dto: UpdateWebhookDto,
-  ) {
+  update(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: UpdateWebhookDto) {
     return this.webhooksService.update(id, user.id, dto);
   }
 

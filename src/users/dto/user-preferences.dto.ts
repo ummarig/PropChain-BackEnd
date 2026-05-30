@@ -63,11 +63,6 @@ export class CreateUserPreferencesDto {
   @IsBoolean()
   inAppNotifications?: boolean;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  inAppNotifications?: boolean;
-
   @IsOptional()
   @IsBoolean()
   propertyAlerts?: boolean;
@@ -118,11 +113,6 @@ export class UpdateUserPreferencesDto {
   @IsOptional()
   @IsBoolean()
   pushNotifications?: boolean;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  inAppNotifications?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -234,5 +224,8 @@ export class UpdateNotificationPreferencesDto {
   })
   @IsOptional()
   @IsObject()
-  perEventSettings?: Record<string, { email?: boolean; sms?: boolean; push?: boolean; inApp?: boolean }>;
+  perEventSettings?: Record<
+    string,
+    { email?: boolean; sms?: boolean; push?: boolean; inApp?: boolean }
+  >;
 }

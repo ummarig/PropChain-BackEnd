@@ -81,10 +81,7 @@ export class UserPreferencesService {
   /**
    * Updates only the notification-related preference fields.
    */
-  async updateNotificationPreferences(
-    userId: string,
-    dto: UpdateNotificationPreferencesDto,
-  ) {
+  async updateNotificationPreferences(userId: string, dto: UpdateNotificationPreferencesDto) {
     // Ensure preferences row exists
     await this.findByUserId(userId);
 
