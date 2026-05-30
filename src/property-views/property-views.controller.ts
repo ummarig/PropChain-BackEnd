@@ -104,6 +104,14 @@ export class PropertyViewsController {
     });
   }
 
+  @Get('leaderboard')
+  leaderboard(@Query() query: PopularPropertiesQueryDto) {
+    return this.propertyViewsService.getPopularProperties({
+      take: query.take,
+      since: this.parseSince(query.since),
+    });
+  }
+
   private parseSince(since?: string): Date | undefined {
     if (!since) return undefined;
     const date = new Date(since);

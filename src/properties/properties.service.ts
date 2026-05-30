@@ -14,6 +14,8 @@ import { CreateAmenityDto, UpdateAmenityDto } from './dto/amenity.dto';
 import { FraudService } from '../fraud/fraud.service';
 import { GeocodingService } from './geocoding.service';
 import { PropertyStatus, UserRole } from '../types/prisma.types';
+import { CacheService } from '../cache/cache.service';
+import { CACHE_TAGS } from '../cache/cache.config';
 import {
   canTransitionPropertyStatus,
   getAllowedNextPropertyStatuses,
@@ -41,6 +43,7 @@ export class PropertiesService {
     private readonly prisma: PrismaService,
     private readonly fraudService: FraudService,
     private readonly geocodingService: GeocodingService,
+    private readonly cacheService: CacheService,
   ) {}
 
   async create(createPropertyDto: CreatePropertyDto, ownerId: string) {
@@ -95,6 +98,7 @@ export class PropertiesService {
     });
 
     await this.fraudService.evaluatePropertyCreated(property.id);
+    await this.cacheService.invalidateByTag(CACHE_TAGS.PROPERTIES);
 
     return property;
   }
@@ -236,7 +240,7 @@ export class PropertiesService {
       }
     }
 
-    return this.prisma.property.update({
+    const updated = await this.prisma.property.update({
       where: { id },
       data: {
         ...rest,
@@ -249,12 +253,16 @@ export class PropertiesService {
         longitude: resolvedLng,
       },
     });
+    await this.cacheService.invalidateByTag(CACHE_TAGS.PROPERTIES);
+    return updated;
   }
 
   async remove(id: string) {
-    return this.prisma.property.delete({
+    const deleted = await this.prisma.property.delete({
       where: { id },
     });
+    await this.cacheService.invalidateByTag(CACHE_TAGS.PROPERTIES);
+    return deleted;
   }
 
   async findByOwnerId(ownerId: string) {
