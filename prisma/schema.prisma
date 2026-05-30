@@ -231,11 +231,12 @@ model User {
   emailEngagements        EmailEngagement[]
   emailBounces            EmailBounce[]
   digestPreference        DigestPreference?
-  createdTaxStrategies       TransactionTaxStrategy[] @relation("CreatedTransactionTaxStrategies")
-  transactionHistory         TransactionHistory[]
-  favorites                  PropertyFavorite[]
-  propertyViews              PropertyView[]
-  openHouseRsvps             OpenHouseRsvp[]
+  createdTaxStrategies    TransactionTaxStrategy[] @relation("CreatedTransactionTaxStrategies")
+  transactionHistory      TransactionHistory[]
+  favorites               PropertyFavorite[]
+  propertyViews           PropertyView[]
+    openHouseRsvps             OpenHouseRsvp[]
+  transactionNotes        TransactionNote[]            @relation("TransactionNoteAuthor")
 
   @@index([email])
   @@index([role])
@@ -597,6 +598,8 @@ model Transaction {
   blockchainHash     String?           @map("blockchain_hash")
   contractAddress    String?           @map("contract_address")
   notes              String?
+  // Fee breakdown (#565)
+  feeBreakdown       Json?             @map("fee_breakdown")
   // Escrow and payment tracking (#561)
   escrowStatus     String?   @map("escrow_status") // PENDING, HELD, RELEASED, REFUNDED
   escrowAmount     Decimal?  @map("escrow_amount")
@@ -622,6 +625,8 @@ model Transaction {
   disputes              Dispute[]
   transactionMilestones TransactionMilestone[]
   transactionHistory    TransactionHistory[]
+  transactionNotes      TransactionNote[]
+  cancelledBy           User?    @relation("CancelledTransactions", fields: [cancelledById], references: [id])
 
   @@index([propertyId])
   @@index([buyerId])
@@ -747,6 +752,7 @@ model UserPreferences {
   quietHoursStart        String?  @map("quiet_hours_start") // "HH:MM" in user timezone
   quietHoursEnd          String?  @map("quiet_hours_end") // "HH:MM" in user timezone
   perEventSettings       Json?    @map("per_event_settings") // fine-grained per-event channel overrides
+  optOutReminders        Boolean  @default(false) @map("opt_out_reminders") // #563
   createdAt              DateTime @default(now()) @map("created_at")
   updatedAt              DateTime @updatedAt @map("updated_at")
 
@@ -1028,10 +1034,11 @@ model TransactionMilestone {
   title         String
   description   String?         @db.Text
   status        MilestoneStatus @default(PENDING)
-  expectedDate  DateTime        @map("expected_date")
-  actualDate    DateTime?       @map("actual_date")
-  createdAt     DateTime        @default(now()) @map("created_at")
-  updatedAt     DateTime        @updatedAt @map("updated_at")
+  expectedDate     DateTime        @map("expected_date")
+  actualDate       DateTime?       @map("actual_date")
+  reminderSentAt   DateTime?       @map("reminder_sent_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
 
   // Relations
   transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
@@ -1207,6 +1214,24 @@ model PropertyDuplicate {
   @@map("property_duplicates")
 }
 
+// Transaction notes with visibility rules (#562)
+model TransactionNote {
+  id            String   @id @default(uuid())
+  transactionId String   @map("transaction_id")
+  authorId      String   @map("author_id")
+  content       String   @db.Text
+  isPublic      Boolean  @default(true) @map("is_public")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  author      User        @relation("TransactionNoteAuthor", fields: [authorId], references: [id])
+
+  @@index([transactionId])
+  @@index([authorId])
+  @@map("transaction_notes")
+ }
+ 
 enum RsvpStatus {
   ATTENDING
   DECLINED

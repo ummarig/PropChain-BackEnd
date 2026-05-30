@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Patch,
   Post,
@@ -22,6 +23,9 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { TransactionsService } from './transactions.service';
+import { TransactionNotesService } from './transaction-notes.service';
+import { TransactionRemindersService } from './transaction-reminders.service';
+import { CreateNoteDto } from './dto/transaction-note.dto';
 import { TransactionAuditService } from './transaction-audit.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -48,6 +52,8 @@ import {
 export class TransactionsController {
   constructor(
     private transactionsService: TransactionsService,
+    private transactionNotesService: TransactionNotesService,
+    private transactionRemindersService: TransactionRemindersService,
     private transactionAuditService: TransactionAuditService,
   ) {}
 
@@ -261,6 +267,42 @@ export class TransactionsController {
     return this.transactionsService.getBlockchainStats();
   }
 
+  @Post(':id/notes')
+  @ApiOperation({ summary: 'Add a note to a transaction (#562)' })
+  async addNote(
+    @Param('id') transactionId: string,
+    @Body() dto: CreateNoteDto,
+    @CurrentUser() user: AuthUserPayload,
+  ) {
+    return this.transactionNotesService.create(transactionId, user.sub, dto);
+  }
+
+  @Get(':id/notes')
+  @ApiOperation({ summary: 'Get transaction notes (visibility enforced) (#562)' })
+  async getNotes(
+    @Param('id') transactionId: string,
+    @CurrentUser() user: AuthUserPayload,
+  ) {
+    return this.transactionNotesService.findByTransaction(transactionId, user.sub, user.role);
+  }
+
+  @Delete(':transactionId/notes/:noteId')
+  @ApiOperation({ summary: 'Delete a transaction note (#562)' })
+  async deleteNote(
+    @Param('noteId') noteId: string,
+    @CurrentUser() user: AuthUserPayload,
+  ) {
+    return this.transactionNotesService.remove(noteId, user.sub, user.role);
+  }
+
+  @Post('reminders/send')
+  @Roles(UserRole.ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Trigger deadline reminder dispatch (Admin only) (#563)' })
+  async sendReminders(@Query('daysAhead') daysAhead?: string) {
+    return this.transactionRemindersService.sendDeadlineReminders(
+      daysAhead ? parseInt(daysAhead, 10) : 3,
+    );
   @Patch(':id/escrow')
   @ApiOperation({ summary: 'Update escrow and payment status (#561)' })
   async updateEscrow(
