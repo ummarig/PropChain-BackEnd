@@ -49,9 +49,7 @@ export class AnalyticsController {
     example: 60,
   })
   @ApiResponse({ status: 200, description: 'Monitoring stats returned successfully' })
-  getStats(
-    @Query('window', new DefaultValuePipe(60), ParseIntPipe) window: number,
-  ) {
+  getStats(@Query('window', new DefaultValuePipe(60), ParseIntPipe) window: number) {
     return this.analytics.getStats(window);
   }
 
@@ -65,9 +63,7 @@ export class AnalyticsController {
   })
   @ApiQuery({ name: 'window', required: false, description: 'Time window in minutes', example: 60 })
   @ApiResponse({ status: 200, description: 'Endpoint stats returned successfully' })
-  getEndpoints(
-    @Query('window', new DefaultValuePipe(60), ParseIntPipe) window: number,
-  ) {
+  getEndpoints(@Query('window', new DefaultValuePipe(60), ParseIntPipe) window: number) {
     return this.analytics.getEndpointStats(window);
   }
 
@@ -81,9 +77,7 @@ export class AnalyticsController {
   })
   @ApiQuery({ name: 'window', required: false, description: 'Time window in minutes', example: 60 })
   @ApiResponse({ status: 200, description: 'Slow endpoints returned successfully' })
-  getSlowEndpoints(
-    @Query('window', new DefaultValuePipe(60), ParseIntPipe) window: number,
-  ) {
+  getSlowEndpoints(@Query('window', new DefaultValuePipe(60), ParseIntPipe) window: number) {
     return this.analytics.getStats(window).slowEndpoints;
   }
 
@@ -97,9 +91,7 @@ export class AnalyticsController {
   })
   @ApiQuery({ name: 'window', required: false, description: 'Time window in minutes', example: 60 })
   @ApiResponse({ status: 200, description: 'Error stats returned successfully' })
-  getErrors(
-    @Query('window', new DefaultValuePipe(60), ParseIntPipe) window: number,
-  ) {
+  getErrors(@Query('window', new DefaultValuePipe(60), ParseIntPipe) window: number) {
     const stats = this.analytics.getStats(window);
     return {
       window: stats.window,
@@ -120,9 +112,7 @@ export class AnalyticsController {
   })
   @ApiQuery({ name: 'window', required: false, description: 'Time window in minutes', example: 60 })
   @ApiResponse({ status: 200, description: 'User usage stats returned successfully' })
-  getUsers(
-    @Query('window', new DefaultValuePipe(60), ParseIntPipe) window: number,
-  ) {
+  getUsers(@Query('window', new DefaultValuePipe(60), ParseIntPipe) window: number) {
     return this.analytics.getStats(window).topUsers;
   }
 

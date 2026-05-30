@@ -96,10 +96,7 @@ export class AnalyticsService {
     }
 
     // --- Aggregate by endpoint ---
-    const endpointMap = new Map<
-      string,
-      { count: number; errors: number; times: number[] }
-    >();
+    const endpointMap = new Map<string, { count: number; errors: number; times: number[] }>();
 
     // --- Aggregate by user ---
     const userMap = new Map<
@@ -222,9 +219,7 @@ export class AnalyticsService {
    * Usage breakdown for a specific user.
    */
   getUserStats(userId: string, windowMinutes = 60): UserUsageStats | null {
-    const records = this.getWindowedRecords(windowMinutes).filter(
-      (r) => r.userId === userId,
-    );
+    const records = this.getWindowedRecords(windowMinutes).filter((r) => r.userId === userId);
     if (records.length === 0) return null;
 
     const errors = records.filter((r) => r.statusCode >= 400).length;

@@ -153,6 +153,12 @@ enum MilestoneStatus {
   DELAYED
 }
 
+enum DocumentStatus {
+  ACTIVE
+  EXPIRED
+  ARCHIVED
+}
+
 // User model
 model User {
   id                       String    @id @default(uuid())
@@ -225,10 +231,11 @@ model User {
   emailEngagements        EmailEngagement[]
   emailBounces            EmailBounce[]
   digestPreference        DigestPreference?
-  createdTaxStrategies    TransactionTaxStrategy[] @relation("CreatedTransactionTaxStrategies")
-  transactionHistory      TransactionHistory[]
-  favorites               PropertyFavorite[]
-  propertyViews           PropertyView[]
+  createdTaxStrategies       TransactionTaxStrategy[] @relation("CreatedTransactionTaxStrategies")
+  transactionHistory         TransactionHistory[]
+  favorites                  PropertyFavorite[]
+  propertyViews              PropertyView[]
+  openHouseRsvps             OpenHouseRsvp[]
 
   @@index([email])
   @@index([role])
@@ -438,6 +445,7 @@ model Property {
   mergedInto   PropertyDuplicate[] @relation("MergedProperty")
   favorites    PropertyFavorite[]
   views        PropertyView[]
+  openHouses   OpenHouse[]
   neighborhood Neighborhood?      @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
 
   @@index([ownerId])
@@ -465,6 +473,8 @@ model PropertyImage {
   order        Int      @default(0)
   isPrimary    Boolean  @default(false) @map("is_primary")
   uniqueHash   String?  @map("unique_hash") // Perceptual hash for duplicate detection
+  altText      String?  @map("alt_text")
+  caption      String?
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -603,12 +613,12 @@ model Transaction {
   commissions           Commission[]
   buyer                 User                     @relation("BuyerTransactions", fields: [buyerId], references: [id])
   seller                User                     @relation("SellerTransactions", fields: [sellerId], references: [id])
+  cancelledBy           User?                    @relation("CancelledTransactions", fields: [cancelledById], references: [id])
   fraudAlerts           FraudAlert[]
   taxStrategies         TransactionTaxStrategy[]
   disputes              Dispute[]
   transactionMilestones TransactionMilestone[]
   transactionHistory    TransactionHistory[]
-  cancelledBy           User?    @relation("CancelledTransactions", fields: [cancelledById], references: [id])
 
   @@index([propertyId])
   @@index([buyerId])
@@ -658,10 +668,16 @@ model Document {
   // Categorization (#401)
   category       String?
   tags           String[]     @default([])
+  // Access Control (#570)
+  isPublic       Boolean      @default(false) @map("is_public")
+  sharedWith     String[]     @default([]) @map("shared_with")
   // Expiration (#402)
   expiresAt      DateTime?    @map("expires_at")
   isExpired      Boolean      @default(false) @map("is_expired")
   expiryNotified Boolean      @default(false) @map("expiry_notified")
+  // Archival Workflow (#573)
+  status         DocumentStatus @default(ACTIVE)
+  archivedAt     DateTime?    @map("archived_at")
   // eSignature (#403)
   signedBy       String?      @map("signed_by")
   signedAt       DateTime?    @map("signed_at")
@@ -1142,6 +1158,8 @@ model Commission {
 
   @@unique([transactionId, agentId])
   @@map("commissions")
+}
+
 // Property duplicate detection results
 model PropertyDuplicate {
   id              String   @id @default(uuid())
@@ -1164,4 +1182,46 @@ model PropertyDuplicate {
   @@index([duplicateType])
   @@index([isMerged])
   @@map("property_duplicates")
+}
+
+enum RsvpStatus {
+  ATTENDING
+  DECLINED
+  MAYBE
+}
+
+model OpenHouse {
+  id          String    @id @default(uuid())
+  propertyId  String    @map("property_id")
+  title       String
+  description String?
+  startAt     DateTime  @map("start_at")
+  endAt       DateTime  @map("end_at")
+  isCancelled Boolean   @default(false) @map("is_cancelled")
+  cancelledAt DateTime? @map("cancelled_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  property Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  rsvps    OpenHouseRsvp[]
+
+  @@index([propertyId])
+  @@map("open_houses")
+}
+
+model OpenHouseRsvp {
+  id          String     @id @default(uuid())
+  openHouseId String     @map("open_house_id")
+  userId      String     @map("user_id")
+  status      RsvpStatus @default(ATTENDING)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  openHouse OpenHouse @relation(fields: [openHouseId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([openHouseId, userId])
+  @@index([openHouseId])
+  @@index([userId])
+  @@map("open_house_rsvps")
 }

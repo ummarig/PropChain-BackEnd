@@ -5,9 +5,10 @@ import { PrismaModule } from '../database/prisma.module';
 import { FraudModule } from '../fraud/fraud.module';
 import { BackupModule } from '../backup/backup.module';
 import { TransactionsModule } from '../transactions/transactions.module';
+import { SessionsModule } from '../sessions/sessions.module';
 
 @Module({
-  imports: [PrismaModule, FraudModule, BackupModule, TransactionsModule],
+  imports: [PrismaModule, FraudModule, BackupModule, TransactionsModule, SessionsModule],
   controllers: [AdminController],
   providers: [AdminService],
   exports: [AdminService],

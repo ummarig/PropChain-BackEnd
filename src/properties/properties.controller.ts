@@ -9,6 +9,8 @@ import {
   Patch,
   Query,
   UseGuards,
+  Res,
+  HttpStatus,
 } from '@nestjs/common';
 import { PropertiesService } from './properties.service';
 import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
@@ -26,10 +28,15 @@ import {
   BulkPropertyDeleteDto,
   BulkPropertyExportDto,
 } from './dto/bulk-operations.dto';
+import { PropertyReportService } from './report/property-report.service';
+import { Response } from 'express';
 
 @Controller('properties')
 export class PropertiesController {
-  constructor(private readonly propertiesService: PropertiesService) {}
+  constructor(
+    private readonly propertiesService: PropertiesService,
+    private readonly propertyReportService: PropertyReportService,
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Post()
@@ -75,6 +82,30 @@ export class PropertiesController {
     return this.propertiesService.remove(id);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/report')
+  async generateReport(@Param('id') id: string, @Res() res: Response): Promise<void> {
+    try {
+      const pdfBuffer = await this.propertyReportService.generatePropertyReport(id);
+
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="property-report-${id}.pdf"`,
+        'Content-Length': pdfBuffer.length,
+      });
+
+      res.send(pdfBuffer);
+    } catch (error) {
+      if (error.message?.includes('not found')) {
+        res.status(HttpStatus.NOT_FOUND).send({ message: error.message });
+        return;
+      }
+      res
+        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .send({ message: 'Failed to generate property report' });
+    }
+  }
+
   /**
    * Transition a property's lifecycle status.
    * Workflow: DRAFT → PENDING → ACTIVE → UNDER_CONTRACT → SOLD
@@ -96,6 +127,20 @@ export class PropertiesController {
       user.sub,
       user.role,
     );
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch(':id/approve')
+  approve(@Param('id') id: string, @CurrentUser() user: AuthUserPayload) {
+    return this.propertiesService.approveProperty(id, user.sub);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch(':id/reject')
+  reject(@Param('id') id: string, @CurrentUser() user: AuthUserPayload) {
+    return this.propertiesService.rejectProperty(id, user.sub);
   }
 
   @Post('bulk/status')
