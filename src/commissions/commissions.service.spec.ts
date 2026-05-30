@@ -24,10 +24,7 @@ describe('CommissionsService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        CommissionsService,
-        { provide: PrismaService, useValue: mockPrismaService },
-      ],
+      providers: [CommissionsService, { provide: PrismaService, useValue: mockPrismaService }],
     }).compile();
 
     service = module.get<CommissionsService>(CommissionsService);
@@ -129,10 +126,12 @@ describe('CommissionsService', () => {
       });
 
       await expect(
-        service.findOne(
-          'c-1',
-          { sub: 'agent-2', email: 'agent2@test.com', role: 'AGENT', type: 'access' },
-        ),
+        service.findOne('c-1', {
+          sub: 'agent-2',
+          email: 'agent2@test.com',
+          role: 'AGENT',
+          type: 'access',
+        }),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });

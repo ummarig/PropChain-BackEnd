@@ -102,7 +102,10 @@ describe('PropertiesService - Agent Assignment', () => {
     it('successfully updates an assignment', async () => {
       mockPrismaService.property.findUnique.mockResolvedValue({ id: 'prop-1', ownerId: 'owner-1' });
       mockPrismaService.propertyAgent.findUnique.mockResolvedValue({ id: 'assign-1' });
-      mockPrismaService.propertyAgent.update.mockResolvedValue({ id: 'assign-1', commissionRate: new Decimal('0.04') });
+      mockPrismaService.propertyAgent.update.mockResolvedValue({
+        id: 'assign-1',
+        commissionRate: new Decimal('0.04'),
+      });
 
       const result = await service.updateAgentAssignment(
         'prop-1',

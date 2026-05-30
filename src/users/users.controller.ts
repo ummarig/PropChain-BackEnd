@@ -113,10 +113,7 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Put('me/profile')
-  updateProfile(
-    @CurrentUser() user: AuthUserPayload,
-    @Body() updateProfileDto: UpdateProfileDto,
-  ) {
+  updateProfile(@CurrentUser() user: AuthUserPayload, @Body() updateProfileDto: UpdateProfileDto) {
     return this.usersService.updateProfile(user.sub, updateProfileDto);
   }
 

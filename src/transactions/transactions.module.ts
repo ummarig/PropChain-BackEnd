@@ -6,6 +6,7 @@ import { DisputesController } from './disputes.controller';
 import { TransactionFeesService } from './transaction-fees.service';
 import { TransactionNotesService } from './transaction-notes.service';
 import { TransactionRemindersService } from './transaction-reminders.service';
+import { TransactionAuditService } from './transaction-audit.service';
 import { PrismaModule } from '../database/prisma.module';
 import { BlockchainModule } from '../blockchain/blockchain.module';
 import { NotificationsModule } from '../notifications/notifications.module';

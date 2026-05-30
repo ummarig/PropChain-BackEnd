@@ -28,11 +28,15 @@ export class DocumentsDownloadController {
     @CurrentUser() user: AuthUserPayload,
     @Res() res: Response,
   ) {
-    const doc = await this.documentsService.findAuthorizedById(id, user.sub);
+    const doc = await this.documentsService.findAuthorizedById(id, user.sub, (user as any).role);
 
-    // NOTE: versionId is reserved for future use; for now we always download latest
-    // based on doc.fileUrl.
-    const objectKey = this.documentsService.toObjectKey(doc.fileUrl);
+    let targetFileUrl = doc.fileUrl;
+    if (query.versionId) {
+      const version = await this.documentsService.getVersion(id, query.versionId, user.sub, (user as any).role);
+      targetFileUrl = version.fileUrl;
+    }
+
+    const objectKey = this.documentsService.toObjectKey(targetFileUrl);
 
     const signed = await this.signedUrlService.getSignedUrl({
       operation: 'download' as SignedUrlOperation,

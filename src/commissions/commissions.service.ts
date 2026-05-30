@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
 import { CommissionListQueryDto } from './dto/commission.dto';
@@ -32,7 +38,9 @@ export class CommissionsService {
       }
 
       const agents = (transaction as any).property?.agents || [];
-      this.logger.log(`Found ${agents.length} agents assigned to property for transaction ${transactionId}`);
+      this.logger.log(
+        `Found ${agents.length} agents assigned to property for transaction ${transactionId}`,
+      );
 
       for (const agentAssignment of agents) {
         // Calculate commission amount
@@ -49,7 +57,9 @@ export class CommissionsService {
         });
 
         if (existing) {
-          this.logger.warn(`Commission for transaction ${transactionId} and agent ${agentAssignment.agentId} already exists`);
+          this.logger.warn(
+            `Commission for transaction ${transactionId} and agent ${agentAssignment.agentId} already exists`,
+          );
           continue;
         }
 
@@ -64,10 +74,15 @@ export class CommissionsService {
           },
         });
 
-        this.logger.log(`Created commission of ${amount.toString()} for agent ${agentAssignment.agentId} on transaction ${transactionId}`);
+        this.logger.log(
+          `Created commission of ${amount.toString()} for agent ${agentAssignment.agentId} on transaction ${transactionId}`,
+        );
       }
     } catch (error) {
-      this.logger.error(`Failed to create commissions for transaction ${transactionId}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to create commissions for transaction ${transactionId}: ${error.message}`,
+        error.stack,
+      );
     }
   }
 
@@ -77,20 +92,21 @@ export class CommissionsService {
   async updateCommissionsStatus(transactionId: string, status: string): Promise<void> {
     try {
       const dbStatus =
-        status === 'COMPLETED'
-          ? 'COMPLETED'
-          : status === 'CANCELLED'
-            ? 'CANCELLED'
-            : 'PENDING';
+        status === 'COMPLETED' ? 'COMPLETED' : status === 'CANCELLED' ? 'CANCELLED' : 'PENDING';
 
       const result = await (this.prisma as any).commission.updateMany({
         where: { transactionId },
         data: { status: dbStatus as any },
       });
 
-      this.logger.log(`Updated ${result.count} commission statuses to ${dbStatus} for transaction ${transactionId}`);
+      this.logger.log(
+        `Updated ${result.count} commission statuses to ${dbStatus} for transaction ${transactionId}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to update commission statuses for transaction ${transactionId}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to update commission statuses for transaction ${transactionId}: ${error.message}`,
+        error.stack,
+      );
     }
   }
 
@@ -254,8 +270,12 @@ export class CommissionsService {
       });
 
       // Get count of completed vs pending
-      const completedCount = await (this.prisma as any).commission.count({ where: { status: 'COMPLETED' } });
-      const pendingCount = await (this.prisma as any).commission.count({ where: { status: 'PENDING' } });
+      const completedCount = await (this.prisma as any).commission.count({
+        where: { status: 'COMPLETED' },
+      });
+      const pendingCount = await (this.prisma as any).commission.count({
+        where: { status: 'PENDING' },
+      });
 
       // Breakdown per agent
       const commissions = await (this.prisma as any).commission.findMany({
@@ -271,7 +291,10 @@ export class CommissionsService {
         },
       });
 
-      const agentMap = new Map<string, { name: string; email: string; earned: number; pending: number }>();
+      const agentMap = new Map<
+        string,
+        { name: string; email: string; earned: number; pending: number }
+      >();
       commissions.forEach((c: any) => {
         const agentId = c.agentId;
         const current = agentMap.get(agentId) || {

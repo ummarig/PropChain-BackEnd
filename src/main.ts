@@ -10,7 +10,6 @@ import { RateLimitGuard } from './auth/guards/rate-limit.guard';
 import { RateLimitService } from './auth/rate-limit.service';
 import { RateLimitHeadersInterceptor } from './auth/interceptors/rate-limit-headers.interceptor';
 import { setupSwagger } from './config/swagger.config';
-import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -51,16 +50,16 @@ async function bootstrap() {
   const cacheMonitoringService = app.get(CacheMonitoringService);
   app.useGlobalInterceptors(new CacheMetricsInterceptor(cacheMonitoringService));
 
-  app.useGlobalPipe(
-  new ValidationPipe({
-    whitelist: true,        // Strip properties not in DTO
-    forbidNonWhitelisted: true, // Throw error for extra properties
-    transform: true,          // Auto-transform types
-    transformOptions: {
-      enableImplicitConversion: true,
-    },
-  }),
-);
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
 
   // Setup Swagger documentation
   setupSwagger(app);

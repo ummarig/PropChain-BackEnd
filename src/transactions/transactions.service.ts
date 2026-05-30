@@ -4,6 +4,9 @@ import { BlockchainService } from '../blockchain/blockchain.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CommissionsService } from '../commissions/commissions.service';
 import { TransactionFeesService } from './transaction-fees.service';
+import { TransactionAuditService } from './transaction-audit.service';
+import { canTransitionTransactionStatus } from './transaction-status.constants';
+import { TransactionStatus } from '../types/prisma.types';
 import {
   CreateTransactionDto,
   UpdateTransactionDto,
@@ -27,6 +30,7 @@ export class TransactionsService {
     private notificationsService: NotificationsService,
     private commissionsService: CommissionsService,
     private transactionFeesService: TransactionFeesService,
+    private transactionAuditService: TransactionAuditService,
   ) {}
 
   /**
@@ -380,10 +384,12 @@ export class TransactionsService {
         throw new NotFoundException('Transaction not found');
       }
 
-      // Validate status transition: COMPLETED/CANCELLED are terminal
-      if (transaction.status === 'COMPLETED' || transaction.status === 'CANCELLED') {
+      // Enforce status lifecycle (#557)
+      const currentStatus = transaction.status as TransactionStatus;
+      const nextStatus = status as TransactionStatus;
+      if (!canTransitionTransactionStatus(currentStatus, nextStatus)) {
         throw new BadRequestException(
-          `Cannot change status from terminal state "${transaction.status}"`,
+          `Invalid status transition from "${currentStatus}" to "${nextStatus}"`,
         );
       }
 
@@ -391,6 +397,15 @@ export class TransactionsService {
         where: { id: transactionId },
         data: { status: status as any },
       });
+
+      // Audit log the transition (#557)
+      await this.transactionAuditService.log(
+        transactionId,
+        'STATUS_TRANSITION',
+        { status: currentStatus },
+        { status: nextStatus },
+        { actorId },
+      );
 
       await this.commissionsService.updateCommissionsStatus(transactionId, status);
 
