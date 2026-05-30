@@ -96,10 +96,10 @@ export class DocumentsController {
     return this.documentsService.verifySignature(id);
   }
 
-  // ── #404 Bulk Download ───────────────────────────────────────────────────
+  // ── #404 / #569 Bulk Download (with authorization) ──────────────────────
 
   @Post('bulk-download')
-  bulkDownload(@Body() dto: BulkDownloadDto, @Res() res: Response) {
-    return this.documentsService.bulkDownload(dto, res);
+  bulkDownload(@Body() dto: BulkDownloadDto, @Res() res: Response, @CurrentUser() user: AuthUserPayload) {
+    return this.documentsService.bulkDownload(dto, res, user.sub);
   }
 }
